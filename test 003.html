@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OEE Management System - Poly Bag Manufacturing</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0b0;
+            --accent-green: #00e676;
+            --accent-blue: #448aff;
+            --accent-purple: #b388ff;
+            --accent-orange: #ffab40;
+            --accent-red: #ff5252;
+            --accent-cyan: #18ffff;
+            --accent-yellow: #ffd740;
+            --stage-extruding: #ff6b9d;
+            --stage-printing: #4ecdc4;
+            --stage-cutting: #ffd166;
+            --border-color: #2a2a4a;
+            --radius: 16px;
+            --radius-sm: 8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
+
+        /* LOGIN */
+        .login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        .login-overlay.hidden { display: none; }
+        .login-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 40px; width: 400px; max-width: 90vw; }
+        .login-box h1 { text-align: center; font-size: 22px; margin-bottom: 6px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .login-box .subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 28px; font-size: 12px; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; }
+        .form-control { width: 100%; padding: 10px 13px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s; }
+        .form-control:focus { border-color: var(--accent-blue); }
+        select.form-control { cursor: pointer; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+        input[type="date"], input[type="time"] { color-scheme: dark; }
+
+        .login-btn { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border: none; border-radius: var(--radius-sm); color: white; font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
+        .login-btn:hover { opacity: 0.9; }
+        .login-error { color: var(--accent-red); font-size: 12px; text-align: center; margin-top: 10px; min-height: 16px; }
+
+        .app-container { display: none; min-height: 100vh; }
+        .app-container.visible { display: block; }
+
+        /* NAVBAR */
+        .top-navbar { background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 0 18px; height: 58px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+        .nav-brand { display: flex; align-items: center; gap: 10px; }
+        .nav-brand .logo { width: 34px; height: 34px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: white; }
+        .nav-brand span { font-weight: 700; font-size: 15px; }
+        .nav-tabs { display: flex; gap: 3px; background: var(--bg-primary); padding: 3px; border-radius: 10px; overflow-x: auto; }
+        .nav-tab { padding: 6px 13px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); border: none; background: none; white-space: nowrap; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+        .nav-tab:hover { color: var(--text-primary); }
+        .nav-tab.active { background: var(--accent-blue); color: white; }
+        .nav-right { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: var(--bg-primary); }
+        .user-name { font-size: 11px; font-weight: 500; }
+        .user-role { font-size: 9px; color: var(--text-secondary); }
+        .logout-btn { padding: 6px 12px; background: var(--accent-red); border: none; border-radius: var(--radius-sm); color: white; font-size: 11px; cursor: pointer; font-family: 'Inter', sans-serif; }
+
+        .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 5px 4px; z-index: 100; }
+        .mobile-nav .mob-tabs { display: flex; justify-content: space-around; overflow-x: auto; }
+        .mob-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 5px; border: none; background: none; color: var(--text-secondary); font-size: 9px; cursor: pointer; font-family: 'Inter', sans-serif; border-radius: 6px; min-width: 50px; }
+        .mob-tab.active { color: var(--accent-blue); background: rgba(68,138,255,0.1); }
+        .mob-tab i { font-size: 15px; }
+
+        @media (max-width: 1200px) { .nav-tabs { display: none; } .mobile-nav { display: block; } .content { padding-bottom: 65px !important; } }
+        @media (max-width: 768px) { .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr !important; } .content { padding: 12px !important; padding-bottom: 65px !important; } .top-navbar { padding: 0 10px; } .uinfo-text { display: none; } }
+
+        .content { padding: 18px; max-width: 1500px; margin: 0 auto; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .page-header { margin-bottom: 18px; }
+        .page-header h2 { font-size: 21px; font-weight: 700; margin-bottom: 3px; }
+        .page-header p { color: var(--text-secondary); font-size: 13px; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 18px; margin-bottom: 18px; }
+        .card-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 18px; }
+
+        .kpi-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 18px; position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .kpi-card.green::before { background: var(--accent-green); }
+        .kpi-card.blue::before { background: var(--accent-blue); }
+        .kpi-card.purple::before { background: var(--accent-purple); }
+        .kpi-card.orange::before { background: var(--accent-orange); }
+        .kpi-card.red::before { background: var(--accent-red); }
+        .kpi-card.cyan::before { background: var(--accent-cyan); }
+        .kpi-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .kpi-value { font-size: 30px; font-weight: 800; line-height: 1; margin-bottom: 5px; }
+        .kpi-icon { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .kpi-icon.green { background: rgba(0,230,118,0.15); color: var(--accent-green); }
+        .kpi-icon.blue { background: rgba(68,138,255,0.15); color: var(--accent-blue); }
+        .kpi-icon.purple { background: rgba(179,136,255,0.15); color: var(--accent-purple); }
+        .kpi-icon.orange { background: rgba(255,171,64,0.15); color: var(--accent-orange); }
+
+        .period-selector { display: flex; gap: 2px; background: var(--bg-primary); padding: 3px; border-radius: 8px; }
+        .period-btn { padding: 5px 11px; border: none; background: none; color: var(--text-secondary); font-size: 11px; font-weight: 500; cursor: pointer; border-radius: 6px; font-family: 'Inter', sans-serif; }
+        .period-btn.active { background: var(--accent-blue); color: white; }
+
+        .progress-bar-container { width: 100%; height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+        .progress-bar { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+        .apq-bars { display: flex; flex-direction: column; gap: 12px; padding: 6px 0; }
+        .apq-bar-item { display: flex; align-items: center; gap: 12px; }
+        .apq-bar-label { width: 85px; font-size: 12px; font-weight: 600; }
+        .apq-bar-track { flex: 1; height: 24px; background: var(--bg-secondary); border-radius: 12px; overflow: hidden; }
+        .apq-bar-fill { height: 100%; border-radius: 12px; transition: width 0.8s ease; display: flex; align-items: center; padding-left: 10px; font-size: 11px; font-weight: 700; color: white; }
+        .apq-bar-fill.availability { background: linear-gradient(90deg, #448aff, #18ffff); }
+        .apq-bar-fill.performance { background: linear-gradient(90deg, #b388ff, #ea80fc); }
+        .apq-bar-fill.quality { background: linear-gradient(90deg, #00e676, #69f0ae); }
+
+        .chart-container { position: relative; height: 270px; width: 100%; }
+        .table-wrapper { max-height: 450px; overflow-y: auto; border-radius: var(--radius-sm); }
+        .table-wrapper::-webkit-scrollbar { width: 5px; }
+        .table-wrapper::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        .table-wrapper::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { padding: 10px 11px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); position: sticky; top: 0; z-index: 1; }
+        .data-table td { padding: 10px 11px; font-size: 12px; border-bottom: 1px solid rgba(42,42,74,0.4); }
+        .data-table tr:hover td { background: rgba(68,138,255,0.05); }
+
+        .status-badge { padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+        .status-running { background: rgba(0,230,118,0.15); color: var(--accent-green); }
+        .status-planned { background: rgba(255,171,64,0.15); color: var(--accent-orange); }
+        .status-loss { background: rgba(255,82,82,0.15); color: var(--accent-red); }
+        .status-changeover { background: rgba(179,136,255,0.15); color: var(--accent-purple); }
+
+        /* Stage Badges */
+        .stage-badge { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+        .stage-extruding { background: rgba(255,107,157,0.15); color: var(--stage-extruding); border: 1px solid rgba(255,107,157,0.3); }
+        .stage-printing { background: rgba(78,205,196,0.15); color: var(--stage-printing); border: 1px solid rgba(78,205,196,0.3); }
+        .stage-cutting { background: rgba(255,209,102,0.15); color: var(--stage-cutting); border: 1px solid rgba(255,209,102,0.3); }
+
+        /* Stage selector pills */
+        .stage-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .stage-pill { padding: 8px 16px; border-radius: 20px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .stage-pill:hover { border-color: var(--accent-blue); }
+        .stage-pill.active.extruding { border-color: var(--stage-extruding); background: rgba(255,107,157,0.15); color: var(--stage-extruding); }
+        .stage-pill.active.printing { border-color: var(--stage-printing); background: rgba(78,205,196,0.15); color: var(--stage-printing); }
+        .stage-pill.active.cutting { border-color: var(--stage-cutting); background: rgba(255,209,102,0.15); color: var(--stage-cutting); }
+        .stage-pill.active.all { border-color: var(--accent-blue); background: rgba(68,138,255,0.15); color: var(--accent-blue); }
+
+        /* Production flow visualization */
+        .prod-flow { display: flex; align-items: center; gap: 10px; padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 14px; flex-wrap: wrap; }
+        .flow-stage { flex: 1; min-width: 140px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; text-align: center; }
+        .flow-stage h5 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .flow-stage h5.ex { color: var(--stage-extruding); }
+        .flow-stage h5.pr { color: var(--stage-printing); }
+        .flow-stage h5.cu { color: var(--stage-cutting); }
+        .flow-stage .oee-value { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+        .flow-stage .machines-list { font-size: 10px; color: var(--text-secondary); margin-top: 6px; }
+        .flow-arrow { color: var(--accent-blue); font-size: 18px; }
+
+        .severity-good { color: var(--accent-green); background: rgba(0,230,118,0.1); padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .severity-medium { color: var(--accent-orange); background: rgba(255,171,64,0.1); padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .severity-extreme { color: var(--accent-red); background: rgba(255,82,82,0.1); padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .oee-color-good { color: var(--accent-green); }
+        .oee-color-medium { color: var(--accent-orange); }
+        .oee-color-bad { color: var(--accent-red); }
+
+        .btn { padding: 8px 18px; border: none; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); color: white; }
+        .btn-success { background: var(--accent-green); color: var(--bg-primary); }
+        .btn-danger { background: var(--accent-red); color: white; }
+        .btn-warning { background: var(--accent-orange); color: var(--bg-primary); }
+        .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .action-btn { padding: 4px 7px; border: none; border-radius: 4px; cursor: pointer; font-size: 10px; margin: 0 1px; }
+        .action-btn.edit { background: rgba(68,138,255,0.2); color: var(--accent-blue); }
+        .action-btn.delete { background: rgba(255,82,82,0.2); color: var(--accent-red); }
+
+        .sub-tabs { display: inline-flex; gap: 3px; margin-bottom: 16px; background: var(--bg-card); padding: 3px; border-radius: 8px; flex-wrap: wrap; }
+        .sub-tab { padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500; color: var(--text-secondary); border: none; background: none; font-family: 'Inter', sans-serif; }
+        .sub-tab.active { background: var(--accent-purple); color: white; }
+
+        .toast { position: fixed; top: 70px; right: 18px; padding: 11px 18px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; z-index: 9999; transform: translateX(400px); transition: transform 0.3s ease; display: flex; align-items: center; gap: 8px; }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: var(--accent-green); color: var(--bg-primary); }
+        .toast.error { background: var(--accent-red); color: white; }
+        .toast.info { background: var(--accent-blue); color: white; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 5000; }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 26px; width: 500px; max-width: 92vw; max-height: 85vh; overflow-y: auto; }
+        .modal-box h3 { margin-bottom: 14px; font-size: 17px; }
+
+        .loss-stack-bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; margin: 10px 0; }
+        .loss-stack-segment { display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: white; }
+        .reason-list-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(42,42,74,0.3); }
+        .reason-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; flex-shrink: 0; }
+        .reason-name { flex: 1; font-size: 12px; }
+        .reason-pct { font-size: 12px; font-weight: 600; margin-left: 8px; }
+        .reason-time { font-size: 11px; color: var(--text-secondary); margin-left: 8px; min-width: 50px; text-align: right; }
+
+        .settings-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+        .settings-section h3 { font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .inline-edit { display: flex; align-items: center; gap: 7px; }
+        .inline-edit input { max-width: 200px; }
+        .product-code-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(68,138,255,0.15); color: var(--accent-blue); border-radius: 14px; font-size: 11px; font-weight: 600; }
+
+        .formula-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; }
+        .formula-card h4 { color: var(--accent-blue); margin-bottom: 8px; font-size: 13px; }
+        .formula-text { font-size: 14px; color: var(--accent-cyan); margin-bottom: 6px; font-family: 'Courier New', monospace; }
+        .formula-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+        .formula-example { background: rgba(68,138,255,0.08); border: 1px solid rgba(68,138,255,0.2); border-radius: 6px; padding: 11px; margin-top: 8px; font-size: 11px; color: var(--accent-cyan); font-family: 'Courier New', monospace; line-height: 1.6; }
+        .formula-note { background: rgba(255,171,64,0.08); border-left: 3px solid var(--accent-orange); padding: 9px 13px; margin-top: 8px; font-size: 11px; color: var(--text-secondary); border-radius: 0 6px 6px 0; }
+
+        .device-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 6px; flex-wrap: wrap; gap: 8px; }
+        .device-info { display: flex; align-items: center; gap: 9px; }
+        .device-icon { width: 34px; height: 34px; border-radius: 8px; background: rgba(68,138,255,0.15); display: flex; align-items: center; justify-content: center; color: var(--accent-blue); font-size: 13px; }
+
+        .gsheet-config { background: rgba(0,230,118,0.05); border: 1px solid rgba(0,230,118,0.2); border-radius: var(--radius-sm); padding: 14px; margin-top: 10px; }
+        .gsheet-config h4 { color: var(--accent-green); margin-bottom: 8px; font-size: 12px; }
+        .gsheet-status { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
+        .gsheet-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .gsheet-dot.connected { background: var(--accent-green); }
+        .gsheet-dot.disconnected { background: var(--accent-red); }
+
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .filter-bar .form-control { width: auto; min-width: 150px; padding: 7px 11px; font-size: 12px; }
+
+        /* Production order card */
+        .order-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+        .order-title { font-weight: 700; font-size: 14px; }
+        .order-stages { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        /* Stage assignment in product */
+        .stage-machine-row { display: grid; grid-template-columns: 100px 1fr; gap: 10px; align-items: center; padding: 8px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 6px; }
+        .stage-machine-row .stage-label { font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 5px; text-align: center; }
+        .stage-machine-row .stage-label.ex { background: rgba(255,107,157,0.2); color: var(--stage-extruding); }
+        .stage-machine-row .stage-label.pr { background: rgba(78,205,196,0.2); color: var(--stage-printing); }
+        .stage-machine-row .stage-label.cu { background: rgba(255,209,102,0.2); color: var(--stage-cutting); }
+
+        .multi-select { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 6px; min-height: 36px; cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        .multi-select-tag { background: var(--accent-blue); color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
+        .multi-select-tag .x { cursor: pointer; opacity: 0.7; font-weight: bold; }
+        .multi-select-tag .x:hover { opacity: 1; }
+        .multi-select-placeholder { color: var(--text-secondary); font-size: 12px; padding: 4px; }
+
+        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; max-height: 180px; overflow-y: auto; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-sm); }
+        .checkbox-item { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: var(--bg-card); border-radius: 4px; font-size: 11px; cursor: pointer; }
+        .checkbox-item:hover { background: rgba(68,138,255,0.1); }
+        .checkbox-item input { cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginScreen">
+    <div class="login-box">
+        <div style="text-align:center;margin-bottom:14px;">
+            <div style="width:50px;height:50px;background:linear-gradient(135deg,#448aff,#b388ff);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:white;">OEE</div>
+        </div>
+        <h1>OEE Management System</h1>
+        <p class="subtitle">Polythene Bag Manufacturing</p>
+        <form id="loginForm" onsubmit="return handleLogin(event)" autocomplete="off">
+            <div class="form-group"><label>Username</label><input type="text" id="loginUsername" class="form-control" autocomplete="off" required></div>
+            <div class="form-group"><label>Password</label><input type="password" id="loginPassword" class="form-control" autocomplete="off" required></div>
+            <button type="submit" class="login-btn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="login-error" id="loginError"></div>
+        </form>
+    </div>
+</div>
+
+<!-- APP -->
+<div class="app-container" id="appContainer">
+    <nav class="top-navbar">
+        <div class="nav-brand"><div class="logo">OEE</div><span>OEE System</span></div>
+        <div class="nav-tabs" id="mainNav">
+            <button class="nav-tab active" onclick="showPage('dashboard',this)"><i class="fas fa-chart-pie"></i> Dashboard</button>
+            <button class="nav-tab" onclick="showPage('availability',this)"><i class="fas fa-clock"></i> Availability</button>
+            <button class="nav-tab" onclick="showPage('performance',this)"><i class="fas fa-tachometer-alt"></i> Performance</button>
+            <button class="nav-tab" onclick="showPage('quality',this)"><i class="fas fa-check-circle"></i> Quality</button>
+            <button class="nav-tab" onclick="showPage('datainput',this)"><i class="fas fa-edit"></i> Data Input</button>
+            <button class="nav-tab" onclick="showPage('calculations',this)"><i class="fas fa-calculator"></i> Formulas</button>
+            <button class="nav-tab" onclick="showPage('products',this)"><i class="fas fa-box"></i> Products</button>
+            <button class="nav-tab" onclick="showPage('settings',this)"><i class="fas fa-cog"></i> Settings</button>
+        </div>
+        <div class="nav-right">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="uinfo-text">
+                    <div class="user-name" id="userDisplayName">Admin</div>
+                    <div class="user-role" id="userDisplayRole">Administrator</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </nav>
+
+    <div class="mobile-nav">
+        <div class="mob-tabs">
+            <button class="mob-tab active" onclick="showPage('dashboard',this)"><i class="fas fa-chart-pie"></i><span>Home</span></button>
+            <button class="mob-tab" onclick="showPage('availability',this)"><i class="fas fa-clock"></i><span>Avail</span></button>
+            <button class="mob-tab" onclick="showPage('performance',this)"><i class="fas fa-tachometer-alt"></i><span>Perf</span></button>
+            <button class="mob-tab" onclick="showPage('quality',this)"><i class="fas fa-check-circle"></i><span>Qual</span></button>
+            <button class="mob-tab" onclick="showPage('datainput',this)"><i class="fas fa-edit"></i><span>Input</span></button>
+            <button class="mob-tab" onclick="showPage('products',this)"><i class="fas fa-box"></i><span>Product</span></button>
+            <button class="mob-tab" onclick="showPage('settings',this)"><i class="fas fa-cog"></i><span>Settings</span></button>
+        </div>
+    </div>
+
+    <div class="content">
+
+        <!-- ===== DASHBOARD ===== -->
+        <div class="page active" id="page-dashboard">
+            <div class="page-header"><h2>OEE Dashboard</h2><p>Overall Equipment Effectiveness Overview</p></div>
+
+            <!-- Stage Filter -->
+            <div class="card" style="padding:14px;">
+                <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:600;">Filter by Stage</div>
+                <div class="stage-pills" id="dashStagePills">
+                    <button class="stage-pill active all" onclick="setStageFilter('ALL','dash',this)"><i class="fas fa-layer-group"></i> All Stages</button>
+                    <button class="stage-pill extruding" onclick="setStageFilter('Extruding','dash',this)"><i class="fas fa-industry"></i> Extruding</button>
+                    <button class="stage-pill printing" onclick="setStageFilter('Printing','dash',this)"><i class="fas fa-print"></i> Printing</button>
+                    <button class="stage-pill cutting" onclick="setStageFilter('Cutting','dash',this)"><i class="fas fa-cut"></i> Cutting</button>
+                </div>
+            </div>
+
+            <div class="filter-bar">
+                <select class="form-control" id="dashMachine" onchange="refreshDashboard()"></select>
+                <input type="date" class="form-control" id="dashDate" onchange="refreshDashboard()">
+            </div>
+
+            <div class="grid-4">
+                <div class="kpi-card green"><div class="kpi-icon green"><i class="fas fa-chart-line"></i></div><div class="kpi-label">Overall OEE</div><div class="kpi-value" id="kpiOverallOEE">0%</div></div>
+                <div class="kpi-card blue"><div class="kpi-icon blue"><i class="fas fa-clock"></i></div><div class="kpi-label">Availability</div><div class="kpi-value" id="kpiAvailability">0%</div><div class="progress-bar-container"><div class="progress-bar" id="barAvailability" style="width:0%;background:var(--accent-blue);"></div></div></div>
+                <div class="kpi-card purple"><div class="kpi-icon purple"><i class="fas fa-tachometer-alt"></i></div><div class="kpi-label">Performance</div><div class="kpi-value" id="kpiPerformance">0%</div><div class="progress-bar-container"><div class="progress-bar" id="barPerformance" style="width:0%;background:var(--accent-purple);"></div></div></div>
+                <div class="kpi-card orange"><div class="kpi-icon orange"><i class="fas fa-check-circle"></i></div><div class="kpi-label">Quality</div><div class="kpi-value" id="kpiQuality">0%</div><div class="progress-bar-container"><div class="progress-bar" id="barQuality" style="width:0%;background:var(--accent-orange);"></div></div></div>
+            </div>
+
+            <!-- Stage OEE Flow -->
+            <div class="card">
+                <div class="card-title">Production Stage Flow - OEE by Stage</div>
+                <div class="prod-flow">
+                    <div class="flow-stage">
+                        <h5 class="ex"><i class="fas fa-industry"></i> Extruding</h5>
+                        <div class="oee-value" id="stageOEE-Extruding">0%</div>
+                        <div style="font-size:10px;color:var(--text-secondary);">Stage OEE</div>
+                        <div class="machines-list" id="stageMachines-Extruding">No machines</div>
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div class="flow-stage">
+                        <h5 class="pr"><i class="fas fa-print"></i> Printing</h5>
+                        <div class="oee-value" id="stageOEE-Printing">0%</div>
+                        <div style="font-size:10px;color:var(--text-secondary);">Stage OEE</div>
+                        <div class="machines-list" id="stageMachines-Printing">No machines</div>
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div class="flow-stage">
+                        <h5 class="cu"><i class="fas fa-cut"></i> Cutting</h5>
+                        <div class="oee-value" id="stageOEE-Cutting">0%</div>
+                        <div style="font-size:10px;color:var(--text-secondary);">Stage OEE</div>
+                        <div class="machines-list" id="stageMachines-Cutting">No machines</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">OEE by Period
+                    <div class="period-selector">
+                        <button class="period-btn active" onclick="setDashPeriod('day',this)">Today</button>
+                        <button class="period-btn" onclick="setDashPeriod('month',this)">Month</button>
+                        <button class="period-btn" onclick="setDashPeriod('year',this)">Year</button>
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="kpi-card cyan"><div class="kpi-label" id="periodLabel1">OEE</div><div class="kpi-value" id="periodValue1">0%</div></div>
+                    <div class="kpi-card cyan"><div class="kpi-label" id="periodLabel2">Production</div><div class="kpi-value" id="periodValue2" style="font-size:24px;">0 pcs</div></div>
+                    <div class="kpi-card cyan"><div class="kpi-label" id="periodLabel3">Downtime</div><div class="kpi-value" id="periodValue3" style="font-size:24px;">0 min</div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">A · P · Q Breakdown</div>
+                <div class="apq-bars">
+                    <div class="apq-bar-item"><div class="apq-bar-label" style="color:var(--accent-blue);">Availability</div><div class="apq-bar-track"><div class="apq-bar-fill availability" id="apqBarA" style="width:0%;">0%</div></div></div>
+                    <div class="apq-bar-item"><div class="apq-bar-label" style="color:var(--accent-purple);">Performance</div><div class="apq-bar-track"><div class="apq-bar-fill performance" id="apqBarP" style="width:0%;">0%</div></div></div>
+                    <div class="apq-bar-item"><div class="apq-bar-label" style="color:var(--accent-green);">Quality</div><div class="apq-bar-track"><div class="apq-bar-fill quality" id="apqBarQ" style="width:0%;">0%</div></div></div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card"><div class="card-title">OEE Trend<div class="period-selector"><button class="period-btn active" onclick="setChartPeriod('daily',this)">Daily</button><button class="period-btn" onclick="setChartPeriod('monthly',this)">Monthly</button><button class="period-btn" onclick="setChartPeriod('yearly',this)">Yearly</button></div></div><div class="chart-container"><canvas id="chartOEETrend"></canvas></div></div>
+                <div class="card"><div class="card-title">Loss Breakdown</div><div class="chart-container"><canvas id="chartLossBreakdown"></canvas></div></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card"><div class="card-title">OEE Losses Detail</div><div class="loss-stack-bar" id="lossStackBar"></div><div id="lossDetailList"></div></div>
+                <div class="card"><div class="card-title">Loss Severity</div><div id="lossSeverityList"></div></div>
+            </div>
+
+            <!-- Active Production Orders -->
+            <div class="card">
+                <div class="card-title">Active Production Orders <span style="color:var(--text-secondary);font-size:11px;font-weight:normal;">Products currently running across stages</span></div>
+                <div id="activeOrdersList"></div>
+            </div>
+        </div>
+
+        <!-- ===== AVAILABILITY ===== -->
+        <div class="page" id="page-availability">
+            <div class="page-header"><h2><i class="fas fa-clock" style="color:var(--accent-blue);"></i> Availability</h2><p>Machine availability tracking by stage</p></div>
+            <div class="card" style="padding:14px;">
+                <div class="stage-pills">
+                    <button class="stage-pill active all" onclick="setStageFilter('ALL','avail',this)">All Stages</button>
+                    <button class="stage-pill extruding" onclick="setStageFilter('Extruding','avail',this)"><i class="fas fa-industry"></i> Extruding</button>
+                    <button class="stage-pill printing" onclick="setStageFilter('Printing','avail',this)"><i class="fas fa-print"></i> Printing</button>
+                    <button class="stage-pill cutting" onclick="setStageFilter('Cutting','avail',this)"><i class="fas fa-cut"></i> Cutting</button>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <select class="form-control" id="availMachine" onchange="refreshAvailability()"></select>
+                <input type="date" class="form-control" id="availDate" onchange="refreshAvailability()">
+                <div class="period-selector">
+                    <button class="period-btn active" onclick="setAvailPeriod('day',this)">Day</button>
+                    <button class="period-btn" onclick="setAvailPeriod('month',this)">Month</button>
+                    <button class="period-btn" onclick="setAvailPeriod('year',this)">Year</button>
+                </div>
+            </div>
+            <div class="grid-4">
+                <div class="kpi-card blue"><div class="kpi-label">Availability</div><div class="kpi-value" id="availPct">0%</div></div>
+                <div class="kpi-card green"><div class="kpi-label">Planned Prod Time</div><div class="kpi-value" id="availPPT" style="font-size:24px;">0 min</div></div>
+                <div class="kpi-card orange"><div class="kpi-label">Run Time</div><div class="kpi-value" id="availART" style="font-size:24px;">0 min</div></div>
+                <div class="kpi-card red"><div class="kpi-label">Downtime</div><div class="kpi-value" id="availDT" style="font-size:24px;">0 min</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-title">Availability Trend</div><div class="chart-container"><canvas id="chartAvailTrend"></canvas></div></div>
+                <div class="card"><div class="card-title">Downtime Reasons</div><div class="chart-container"><canvas id="chartDowntimeReasons"></canvas></div></div>
+            </div>
+            <div class="card"><div class="card-title">Downtime Log</div><div class="table-wrapper"><table class="data-table" id="availDowntimeTable"><thead><tr><th>#</th><th>Machine</th><th>Stage</th><th>Date</th><th>Start</th><th>End</th><th>Duration</th><th>Reason</th></tr></thead><tbody></tbody></table></div></div>
+        </div>
+
+        <!-- ===== PERFORMANCE ===== -->
+        <div class="page" id="page-performance">
+            <div class="page-header"><h2><i class="fas fa-tachometer-alt" style="color:var(--accent-purple);"></i> Performance</h2><p>Production speed by stage</p></div>
+            <div class="card" style="padding:14px;">
+                <div class="stage-pills">
+                    <button class="stage-pill active all" onclick="setStageFilter('ALL','perf',this)">All Stages</button>
+                    <button class="stage-pill extruding" onclick="setStageFilter('Extruding','perf',this)"><i class="fas fa-industry"></i> Extruding</button>
+                    <button class="stage-pill printing" onclick="setStageFilter('Printing','perf',this)"><i class="fas fa-print"></i> Printing</button>
+                    <button class="stage-pill cutting" onclick="setStageFilter('Cutting','perf',this)"><i class="fas fa-cut"></i> Cutting</button>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <select class="form-control" id="perfMachine" onchange="refreshPerformance()"></select>
+                <input type="date" class="form-control" id="perfDate" onchange="refreshPerformance()">
+                <div class="period-selector">
+                    <button class="period-btn active" onclick="setPerfPeriod('day',this)">Day</button>
+                    <button class="period-btn" onclick="setPerfPeriod('month',this)">Month</button>
+                    <button class="period-btn" onclick="setPerfPeriod('year',this)">Year</button>
+                </div>
+            </div>
+            <div class="grid-4">
+                <div class="kpi-card purple"><div class="kpi-label">Performance</div><div class="kpi-value" id="perfPct">0%</div></div>
+                <div class="kpi-card blue"><div class="kpi-label">Ideal Cycle Time</div><div class="kpi-value" id="perfICT" style="font-size:22px;">0 s/pc</div></div>
+                <div class="kpi-card green"><div class="kpi-label">Total Count</div><div class="kpi-value" id="perfTC" style="font-size:24px;">0 pcs</div></div>
+                <div class="kpi-card orange"><div class="kpi-label">Run Time</div><div class="kpi-value" id="perfRT" style="font-size:24px;">0 min</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-title">Performance Trend</div><div class="chart-container"><canvas id="chartPerfTrend"></canvas></div></div>
+                <div class="card"><div class="card-title">Actual vs Target</div><div class="chart-container"><canvas id="chartProdVsTarget"></canvas></div></div>
+            </div>
+        </div>
+
+        <!-- ===== QUALITY ===== -->
+        <div class="page" id="page-quality">
+            <div class="page-header"><h2><i class="fas fa-check-circle" style="color:var(--accent-green);"></i> Quality</h2><p>Quality rate by stage</p></div>
+            <div class="card" style="padding:14px;">
+                <div class="stage-pills">
+                    <button class="stage-pill active all" onclick="setStageFilter('ALL','qual',this)">All Stages</button>
+                    <button class="stage-pill extruding" onclick="setStageFilter('Extruding','qual',this)"><i class="fas fa-industry"></i> Extruding</button>
+                    <button class="stage-pill printing" onclick="setStageFilter('Printing','qual',this)"><i class="fas fa-print"></i> Printing</button>
+                    <button class="stage-pill cutting" onclick="setStageFilter('Cutting','qual',this)"><i class="fas fa-cut"></i> Cutting</button>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <select class="form-control" id="qualMachine" onchange="refreshQuality()"></select>
+                <input type="date" class="form-control" id="qualDate" onchange="refreshQuality()">
+                <div class="period-selector">
+                    <button class="period-btn active" onclick="setQualPeriod('day',this)">Day</button>
+                    <button class="period-btn" onclick="setQualPeriod('month',this)">Month</button>
+                    <button class="period-btn" onclick="setQualPeriod('year',this)">Year</button>
+                </div>
+            </div>
+            <div class="grid-4">
+                <div class="kpi-card green"><div class="kpi-label">Quality</div><div class="kpi-value" id="qualPct">0%</div></div>
+                <div class="kpi-card blue"><div class="kpi-label">Good Pieces</div><div class="kpi-value" id="qualGood" style="font-size:24px;">0</div></div>
+                <div class="kpi-card red"><div class="kpi-label">Rejected</div><div class="kpi-value" id="qualBad" style="font-size:24px;">0</div></div>
+                <div class="kpi-card purple"><div class="kpi-label">Total</div><div class="kpi-value" id="qualTotal" style="font-size:24px;">0</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><div class="card-title">Quality Trend</div><div class="chart-container"><canvas id="chartQualTrend"></canvas></div></div>
+                <div class="card"><div class="card-title">Good vs Rejected</div><div class="chart-container"><canvas id="chartGoodVsBad"></canvas></div></div>
+            </div>
+        </div>
+
+        <!-- ===== DATA INPUT ===== -->
+        <div class="page" id="page-datainput">
+            <div class="page-header"><h2><i class="fas fa-edit" style="color:var(--accent-cyan);"></i> Data Input</h2><p>Enter production and downtime data</p></div>
+            <div class="sub-tabs">
+                <button class="sub-tab active" onclick="showInputTab('shift',this)">Downtime Log</button>
+                <button class="sub-tab" onclick="showInputTab('production',this)">Production Data</button>
+                <button class="sub-tab" onclick="showInputTab('reasons',this)">Reason Codes</button>
+            </div>
+
+            <!-- Downtime Log -->
+            <div class="input-section" id="input-shift">
+                <div class="card">
+                    <div class="card-title">Add Activity Entry</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Machine (with stage)</label><select class="form-control" id="inputMachine"></select></div>
+                        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="inputDate"></div>
+                        <div class="form-group"><label>Shift</label><select class="form-control" id="inputShift"><option value="Day">Day</option><option value="Night">Night</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Start Time</label><input type="time" class="form-control" id="inputStartTime"></div>
+                        <div class="form-group"><label>End Time</label><input type="time" class="form-control" id="inputEndTime"></div>
+                        <div class="form-group"><label>Reason</label><select class="form-control" id="inputReasonCode"></select></div>
+                    </div>
+                    <div class="form-group"><label>Remarks</label><input type="text" class="form-control" id="inputRemarks" placeholder="Optional"></div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="addLogEntry()"><i class="fas fa-plus"></i> Add</button>
+                        <button class="btn btn-secondary" onclick="clearLogForm()"><i class="fas fa-undo"></i> Clear</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Activity Log
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <select class="form-control" id="logFilterStage" onchange="renderLogTable()" style="width:auto;padding:5px 8px;font-size:11px;">
+                                <option value="ALL">All Stages</option>
+                                <option value="Extruding">Extruding</option>
+                                <option value="Printing">Printing</option>
+                                <option value="Cutting">Cutting</option>
+                            </select>
+                            <select class="form-control" id="logFilterMachine" onchange="renderLogTable()" style="width:auto;min-width:120px;padding:5px 8px;font-size:11px;"></select>
+                            <input type="date" class="form-control" id="logFilterDate" onchange="renderLogTable()" style="width:auto;padding:5px 8px;font-size:11px;">
+                        </div>
+                    </div>
+                    <div class="table-wrapper"><table class="data-table" id="logTable"><thead><tr><th>#</th><th>Machine</th><th>Stage</th><th>Date</th><th>Start</th><th>End</th><th>Dur</th><th>Reason</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- Production Data -->
+            <div class="input-section" id="input-production" style="display:none;">
+                <div class="card">
+                    <div class="card-title">Production Data Entry</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Machine (with stage)</label><select class="form-control" id="prodInputMachine" onchange="updateMachineStageDisplay()"></select></div>
+                        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="prodInputDate"></div>
+                        <div class="form-group"><label>Shift</label><select class="form-control" id="prodInputShift"><option value="Day">Day</option><option value="Night">Night</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Product Code</label><select class="form-control" id="prodInputProduct" onchange="autoFillICT()"></select></div>
+                        <div class="form-group"><label>Shift Length (min)</label><input type="number" class="form-control" id="prodInputShiftLen" value="720"></div>
+                        <div class="form-group"><label>Breaks (min)</label><input type="number" class="form-control" id="prodInputBreaks" value="120"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Ideal Rate (pcs/min)</label><input type="number" class="form-control" id="prodInputICT" value="135" step="0.1"></div>
+                        <div class="form-group"><label>Total Pieces</label><input type="number" class="form-control" id="prodInputTotal" value="0"></div>
+                        <div class="form-group"><label>Rejected</label><input type="number" class="form-control" id="prodInputRejected" value="0"></div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-success" onclick="addProductionEntry()"><i class="fas fa-save"></i> Save</button>
+                        <button class="btn btn-secondary" onclick="clearProdForm()"><i class="fas fa-undo"></i> Clear</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Production Records
+                        <select class="form-control" id="prodFilterStage" onchange="renderProdTable()" style="width:auto;padding:5px 8px;font-size:11px;">
+                            <option value="ALL">All Stages</option>
+                            <option value="Extruding">Extruding</option>
+                            <option value="Printing">Printing</option>
+                            <option value="Cutting">Cutting</option>
+                        </select>
+                    </div>
+                    <div class="table-wrapper"><table class="data-table" id="prodTable"><thead><tr><th>#</th><th>Machine</th><th>Stage</th><th>Date</th><th>Shift</th><th>Product</th><th>Rate</th><th>Total</th><th>Rej</th><th>Good</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- Reason Codes -->
+            <div class="input-section" id="input-reasons" style="display:none;">
+                <div class="card">
+                    <div class="card-title">Add Reason Code</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Code</label><input type="number" class="form-control" id="rcCode"></div>
+                        <div class="form-group"><label>Reason</label><input type="text" class="form-control" id="rcName"></div>
+                        <div class="form-group"><label>Type</label><select class="form-control" id="rcType"><option value="Loss">Loss</option><option value="Planned">Planned</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Department</label><select class="form-control" id="rcDept"><option>Engineering</option><option>Production</option><option>QC</option></select></div>
+                        <div class="form-group"><label>Loss Type</label><select class="form-control" id="rcLossType"><option>Availability Loss</option><option>Planned</option><option>Changeover loss</option></select></div>
+                        <div class="form-group"><label>Relation</label><input type="text" class="form-control" id="rcRelation"></div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="addReasonCode()"><i class="fas fa-plus"></i> Add</button>
+                        <button class="btn btn-secondary" onclick="clearReasonForm()"><i class="fas fa-undo"></i> Clear</button>
+                    </div>
+                </div>
+                <div class="card"><div class="card-title">Reason Codes</div><div class="table-wrapper"><table class="data-table" id="reasonTable"><thead><tr><th>Code</th><th>Reason</th><th>Type</th><th>Dept</th><th>Loss Type</th><th>Actions</th></tr></thead><tbody></tbody></table></div></div>
+            </div>
+        </div>
+
+        <!-- ===== CALCULATIONS ===== -->
+        <div class="page" id="page-calculations">
+            <div class="page-header"><h2><i class="fas fa-calculator" style="color:var(--accent-yellow);"></i> OEE Formulas</h2><p>Equations used in this system</p></div>
+            <div class="grid-2">
+                <div>
+                    <div class="formula-card">
+                        <h4><i class="fas fa-cog"></i> OEE Formula</h4>
+                        <div class="formula-text">OEE = Availability × Performance × Quality</div>
+                        <div class="formula-example"><strong>Example:</strong><br>A=90%, P=75%, Q=98%<br><strong>OEE = 0.90 × 0.75 × 0.98 = 66.15%</strong></div>
+                    </div>
+                    <div class="formula-card">
+                        <h4><i class="fas fa-clock"></i> Availability</h4>
+                        <div class="formula-text">Availability = Run Time / Planned Production Time</div>
+                        <div class="formula-desc">Run Time = Planned Time − Unplanned Downtime<br>Planned Time = Shift Length − Breaks</div>
+                        <div class="formula-example"><strong>Example:</strong><br>Shift=720, Breaks=120, Downtime=55<br>Planned=600, Run=545<br><strong>Avail = 545/600 = 90.83%</strong></div>
+                    </div>
+                    <div class="formula-card">
+                        <h4><i class="fas fa-tachometer-alt"></i> Performance</h4>
+                        <div class="formula-text">Performance = (ICT × Total Count) / Run Time</div>
+                        <div class="formula-desc">ICT = 1 / Ideal Rate. Capped at 100%.</div>
+                        <div class="formula-example"><strong>Example:</strong><br>Rate=135/min, ICT=0.00741<br>Count=65000, Run=545<br><strong>Perf = (0.00741×65000)/545 = 88.35%</strong></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="formula-card">
+                        <h4><i class="fas fa-check-circle"></i> Quality</h4>
+                        <div class="formula-text">Quality = Good Pieces / Total Pieces</div>
+                        <div class="formula-example"><strong>Example:</strong><br>Total=65000, Rejected=1400<br>Good=63600<br><strong>Q = 63600/65000 = 97.85%</strong></div>
+                    </div>
+                    <div class="formula-card">
+                        <h4><i class="fas fa-layer-group"></i> 3-Stage Production</h4>
+                        <div class="formula-desc">
+                            Our production has 3 stages:<br>
+                            <span class="stage-badge stage-extruding"><i class="fas fa-industry"></i> Extruding</span>
+                            <span class="stage-badge stage-printing"><i class="fas fa-print"></i> Printing</span>
+                            <span class="stage-badge stage-cutting"><i class="fas fa-cut"></i> Cutting</span><br><br>
+                            <strong>Stage OEE</strong> = Average OEE of all machines in that stage<br><br>
+                            <strong>Product OEE</strong> = Stage1 × Stage2 × Stage3 (when product passes through all)<br><br>
+                            Each product uses 3+ machines (one or more per stage).
+                        </div>
+                        <div class="formula-example"><strong>Example Product PRD-001:</strong><br>Extruding (BM-EX01): 88%<br>Printing (BM-PR01): 75%<br>Cutting (BM-CU01, BM-CU02): 82%<br><strong>Combined = 0.88×0.75×0.82 = 54.1%</strong></div>
+                    </div>
+                    <div class="formula-card">
+                        <h4><i class="fas fa-exchange-alt"></i> Multi-Product / Speed Changes</h4>
+                        <div class="formula-desc">When machine runs multiple products with different speeds:</div>
+                        <div class="formula-text">Weighted ICT = Σ(ICT × Count) / Σ(Count)</div>
+                        <div class="formula-example"><strong>Example:</strong><br>Product A: 135/min × 40000<br>Product B: 110/min × 25000<br>= (135×40000 + 110×25000)/65000<br><strong>= 125.4 pcs/min average</strong></div>
+                        <div class="formula-note">Enter each product run as a separate production entry.</div>
+                    </div>
+                    <div class="formula-card">
+                        <h4><i class="fas fa-chart-bar"></i> Benchmarks</h4>
+                        <div class="formula-desc">
+                            <span class="severity-extreme">&lt; 65% — Extreme (Major issues)</span><br><br>
+                            <span class="severity-medium">65% - 85% — Medium (Typical)</span><br><br>
+                            <span class="severity-good">&gt; 85% — Good (World Class)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== PRODUCTS ===== -->
+        <div class="page" id="page-products">
+            <div class="page-header"><h2><i class="fas fa-box" style="color:var(--accent-cyan);"></i> Products & Machines</h2><p>Manage products, machines and stage assignments</p></div>
+
+            <div class="sub-tabs">
+                <button class="sub-tab active" onclick="showProdTab('products',this)">Product Codes</button>
+                <button class="sub-tab" onclick="showProdTab('machines',this)">Machines</button>
+                <button class="sub-tab" onclick="showProdTab('defaults',this)">Shift Defaults</button>
+            </div>
+
+            <!-- PRODUCTS TAB -->
+            <div class="prod-section" id="prod-products">
+                <div class="card">
+                    <div class="card-title">Add Product (with machine assignments)</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Product Code</label><input class="form-control" id="newProductCode" placeholder="PRD-001"></div>
+                        <div class="form-group"><label>Product Name</label><input class="form-control" id="newProductName" placeholder="HDPE Bag 12x18"></div>
+                        <div class="form-group"><label>Default Ideal Rate (pcs/min)</label><input type="number" class="form-control" id="newProductICT" value="135"></div>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;display:block;">Assign Machines per Stage <span style="font-weight:normal;font-size:11px;">(select 1+ machines for each stage this product uses)</span></label>
+                        
+                        <div style="margin-bottom:10px;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                                <span class="stage-badge stage-extruding"><i class="fas fa-industry"></i> Extruding</span>
+                            </div>
+                            <div class="checkbox-grid" id="newProdExtrudingMachines"></div>
+                        </div>
+                        <div style="margin-bottom:10px;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                                <span class="stage-badge stage-printing"><i class="fas fa-print"></i> Printing</span>
+                            </div>
+                            <div class="checkbox-grid" id="newProdPrintingMachines"></div>
+                        </div>
+                        <div style="margin-bottom:14px;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                                <span class="stage-badge stage-cutting"><i class="fas fa-cut"></i> Cutting</span>
+                            </div>
+                            <div class="checkbox-grid" id="newProdCuttingMachines"></div>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="addProduct()"><i class="fas fa-plus"></i> Add Product</button>
+                        <button class="btn btn-secondary" onclick="clearProductForm()"><i class="fas fa-undo"></i> Clear</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">All Products</div>
+                    <div id="productsListView"></div>
+                </div>
+            </div>
+
+            <!-- MACHINES TAB -->
+            <div class="prod-section" id="prod-machines" style="display:none;">
+                <div class="card">
+                    <div class="card-title">Add Machine</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Machine No.</label><input class="form-control" id="newMachineNo" placeholder="BM-EX01"></div>
+                        <div class="form-group"><label>Machine Name</label><input class="form-control" id="newMachineName" placeholder="Extruder 01"></div>
+                        <div class="form-group"><label>Stage</label>
+                            <select class="form-control" id="newMachineStage">
+                                <option value="Extruding">🏭 Extruding</option>
+                                <option value="Printing">🖨️ Printing</option>
+                                <option value="Cutting">✂️ Cutting</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="addMachine()"><i class="fas fa-plus"></i> Add Machine</button>
+                </div>
+                <div class="card">
+                    <div class="card-title">Machines by Stage
+                        <select class="form-control" id="machineFilterStage" onchange="renderMachineTable()" style="width:auto;padding:5px 8px;font-size:11px;">
+                            <option value="ALL">All Stages</option>
+                            <option value="Extruding">Extruding</option>
+                            <option value="Printing">Printing</option>
+                            <option value="Cutting">Cutting</option>
+                        </select>
+                    </div>
+                    <div class="table-wrapper"><table class="data-table" id="machineTable"><thead><tr><th>No.</th><th>Name</th><th>Stage</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- DEFAULTS TAB -->
+            <div class="prod-section" id="prod-defaults" style="display:none;">
+                <div class="card">
+                    <div class="card-title">Default Shift Settings</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Day Shift Length (min)</label><input type="number" class="form-control" id="defaultDayShiftLen" value="720"></div>
+                        <div class="form-group"><label>Day Breaks (min)</label><input type="number" class="form-control" id="defaultDayBreaks" value="120"></div>
+                        <div class="form-group"><label>Night Shift Length (min)</label><input type="number" class="form-control" id="defaultNightShiftLen" value="720"></div>
+                        <div class="form-group"><label>Night Breaks (min)</label><input type="number" class="form-control" id="defaultNightBreaks" value="140"></div>
+                        <div class="form-group"><label>Default Rate (pcs/min)</label><input type="number" class="form-control" id="defaultICT" value="135"></div>
+                    </div>
+                    <button class="btn btn-success" onclick="saveShiftDefaults()"><i class="fas fa-save"></i> Save Defaults</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SETTINGS ===== -->
+        <div class="page" id="page-settings">
+            <div class="page-header"><h2><i class="fas fa-cog" style="color:var(--accent-purple);"></i> Settings</h2><p>Users, devices, backup and sync</p></div>
+
+            <div class="settings-section" id="settingsUserSection">
+                <h3><i class="fas fa-users" style="color:var(--accent-blue);"></i> User Management</h3>
+                <div class="grid-2" id="userManagementGrid">
+                    <div>
+                        <h4 style="margin-bottom:10px;color:var(--accent-blue);font-size:13px;">Main User (Admin)</h4>
+                        <div class="form-group"><label>Username</label><div class="inline-edit"><input class="form-control" id="settMainUser"><button class="btn btn-primary" onclick="updateUsername('main')" style="padding:6px 12px;font-size:11px;">Update</button></div></div>
+                        <div class="form-group"><label>New Password</label><div class="inline-edit"><input type="password" class="form-control" id="settMainPass"><button class="btn btn-primary" onclick="updatePassword('main')" style="padding:6px 12px;font-size:11px;">Update</button></div></div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:10px;color:var(--accent-green);font-size:13px;">Logger User</h4>
+                        <div class="form-group"><label>Username</label><div class="inline-edit"><input class="form-control" id="settLoggerUser"><button class="btn btn-primary" onclick="updateUsername('logger')" style="padding:6px 12px;font-size:11px;">Update</button></div></div>
+                        <div class="form-group"><label>New Password</label><div class="inline-edit"><input type="password" class="form-control" id="settLoggerPass"><button class="btn btn-primary" onclick="updatePassword('logger')" style="padding:6px 12px;font-size:11px;">Update</button></div></div>
+                    </div>
+                </div>
+                <div id="loggerNoAccess" style="display:none;padding:18px;text-align:center;color:var(--text-secondary);">
+                    <i class="fas fa-lock" style="font-size:28px;color:var(--accent-orange);margin-bottom:8px;display:block;"></i>
+                    Only the administrator can manage user accounts.
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3><i class="fas fa-laptop" style="color:var(--accent-cyan);"></i> Connected Devices</h3>
+                <div id="deviceList"></div>
+            </div>
+
+            <div class="settings-section">
+                <h3><i class="fas fa-table" style="color:var(--accent-green);"></i> Google Sheet Sync</h3>
+                <div class="gsheet-config">
+                    <h4><i class="fas fa-link"></i> Apps Script URL</h4>
+                    <div class="form-group"><input type="text" class="form-control" id="gsheetUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
+                    <div class="form-group"><label>Sheet Name</label><input type="text" class="form-control" id="gsheetName" value="OEE_Data"></div>
+                    <div class="gsheet-status"><div class="gsheet-dot" id="gsheetDot"></div><span style="font-size:12px;" id="gsheetStatusText">Not connected</span></div>
+                    <div class="btn-group" style="margin-top:10px;">
+                        <button class="btn btn-success" onclick="saveGSheetConfig()"><i class="fas fa-save"></i> Save</button>
+                        <button class="btn btn-primary" onclick="testGSheetConnection()"><i class="fas fa-plug"></i> Test</button>
+                        <button class="btn btn-warning" onclick="syncToGSheet()"><i class="fas fa-sync"></i> Sync Now</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3><i class="fas fa-database" style="color:var(--accent-blue);"></i> Backup & Export</h3>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="exportBackup()"><i class="fas fa-download"></i> Export JSON</button>
+                    <button class="btn btn-success" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Export CSV</button>
+                    <label class="btn btn-warning" style="cursor:pointer;"><i class="fas fa-upload"></i> Import<input type="file" accept=".json" onchange="importBackup(event)" style="display:none;"></label>
+                </div>
+            </div>
+
+            <div class="settings-section" id="resetSection" style="border-color:rgba(255,82,82,0.3);">
+                <h3><i class="fas fa-exclamation-triangle" style="color:var(--accent-red);"></i> Reset Data</h3>
+                <p style="color:var(--text-secondary);margin-bottom:12px;font-size:12px;">Enter admin credentials to reset all data.</p>
+                <div class="form-row" style="max-width:500px;">
+                    <div class="form-group"><label>Admin Username</label><input class="form-control" id="resetUser"></div>
+                    <div class="form-group"><label>Admin Password</label><input type="password" class="form-control" id="resetPass"></div>
+                </div>
+                <button class="btn btn-danger" onclick="resetAllData()"><i class="fas fa-trash"></i> Reset All Data</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+    <div class="modal-box">
+        <h3 id="editModalTitle">Edit</h3>
+        <div id="editModalContent"></div>
+        <div class="btn-group" style="margin-top:14px;">
+            <button class="btn btn-primary" id="editModalSave">Save</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const STAGES = ['Extruding', 'Printing', 'Cutting'];
+
+const DEFAULT_DATA = {
+    users: { main: { username: 'admin', password: '12345678' }, logger: { username: 'logger', password: 'log123' } },
+    shiftDefaults: { dayShiftLen: 720, dayBreaks: 120, nightShiftLen: 720, nightBreaks: 140, defaultICT: 135 },
+    machines: [
+        { id: 'BM-EX01', name: 'Extruder 01', stage: 'Extruding' },
+        { id: 'BM-EX02', name: 'Extruder 02', stage: 'Extruding' },
+        { id: 'BM-PR01', name: 'Printer 01', stage: 'Printing' },
+        { id: 'BM-PR02', name: 'Printer 02', stage: 'Printing' },
+        { id: 'BM-CU01', name: 'Cutter 01', stage: 'Cutting' },
+        { id: 'BM-CU02', name: 'Cutter 02', stage: 'Cutting' },
+        { id: 'BM-CU03', name: 'Cutter 03', stage: 'Cutting' }
+    ],
+    products: [
+        { code: 'PRD-001', name: 'HDPE Bag 12x18', ict: 135, stageMachines: { Extruding: ['BM-EX01'], Printing: ['BM-PR01'], Cutting: ['BM-CU01'] } },
+        { code: 'PRD-002', name: 'LDPE Bag Large', ict: 125, stageMachines: { Extruding: ['BM-EX02'], Printing: ['BM-PR02'], Cutting: ['BM-CU02', 'BM-CU03'] } }
+    ],
+    reasonCodes: [
+        {code:1,reason:'Quality Issues',type:'Loss',dept:'QC',lossType:'Availability Loss',relation:'QC related'},
+        {code:4,reason:'No Operators',type:'Loss',dept:'Production',lossType:'Availability Loss',relation:'Production related'},
+        {code:5,reason:'Waiting Materials',type:'Loss',dept:'Production',lossType:'Availability Loss',relation:'Production related'},
+        {code:9,reason:'Waiting for Maintenance',type:'Loss',dept:'Engineering',lossType:'Availability Loss',relation:'Engineering'},
+        {code:10,reason:'Not Cutting properly',type:'Loss',dept:'Engineering',lossType:'Availability Loss',relation:'Engineering'},
+        {code:11,reason:'Not Sealing properly',type:'Loss',dept:'Engineering',lossType:'Availability Loss',relation:'Engineering'},
+        {code:12,reason:'Damaged Solenoid Valve',type:'Loss',dept:'Engineering',lossType:'Availability Loss',relation:'Engineering'},
+        {code:16,reason:'Damaged Teflon',type:'Loss',dept:'Engineering',lossType:'Availability Loss',relation:'Engineering'},
+        {code:24,reason:'Damaged Heating Element',type:'Loss',dept:'Engineering',lossType:'Availability Loss',relation:'Engineering'},
+        {code:27,reason:'Breakfast',type:'Planned',dept:'Production',lossType:'Planned',relation:'Planned'},
+        {code:28,reason:'Lunch',type:'Planned',dept:'Production',lossType:'Planned',relation:'Planned'},
+        {code:29,reason:'Dinner',type:'Planned',dept:'Production',lossType:'Planned',relation:'Planned'},
+        {code:30,reason:'Tea Break',type:'Planned',dept:'Production',lossType:'Planned',relation:'Planned'},
+        {code:33,reason:'Machine Cleaning',type:'Planned',dept:'Production',lossType:'Planned',relation:'Planned'},
+        {code:35,reason:'PM or AM',type:'Planned',dept:'Engineering',lossType:'Planned',relation:'Planned'},
+        {code:36,reason:'Roll Change',type:'Planned',dept:'Production',lossType:'Changeover loss',relation:'Changeover'},
+        {code:37,reason:'Product Change',type:'Planned',dept:'Production',lossType:'Changeover loss',relation:'Changeover'},
+        {code:38,reason:'Tape Change',type:'Planned',dept:'Production',lossType:'Changeover loss',relation:'Changeover'},
+        {code:42,reason:'Unplanned Stoppage',type:'Loss',dept:'Production',lossType:'Availability Loss',relation:'Other'}
+    ],
+    logEntries: [], productionData: [], devices: [], currentDevice: null,
+    gsheetConfig: { url: '', sheetName: 'OEE_Data', lastSync: null }
+};
+
+let appData, currentUser = null, chartInstances = {};
+let dashPeriod='day', chartPeriod='daily', availPeriod='day', perfPeriod='day', qualPeriod='day';
+let dashStage='ALL', availStage='ALL', perfStage='ALL', qualStage='ALL';
+
+function loadData() {
+    try {
+        const s = localStorage.getItem('oee_v4');
+        if (s) {
+            appData = JSON.parse(s);
+            for (let k in DEFAULT_DATA) if (!(k in appData)) appData[k] = JSON.parse(JSON.stringify(DEFAULT_DATA[k]));
+            // Ensure each machine has stage
+            appData.machines.forEach(m => { if (!m.stage) m.stage = 'Extruding'; });
+            // Ensure each product has stageMachines
+            appData.products.forEach(p => { if (!p.stageMachines) p.stageMachines = { Extruding:[], Printing:[], Cutting:[] }; });
+        } else appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    } catch(e) { appData = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+    saveData();
+}
+function saveData() { try { localStorage.setItem('oee_v4', JSON.stringify(appData)); } catch(e) {} }
+
+// ====== AUTH ======
+function handleLogin(e) {
+    if(e) e.preventDefault();
+    const u = document.getElementById('loginUsername').value.trim();
+    const p = document.getElementById('loginPassword').value.trim();
+    if (!u||!p) { document.getElementById('loginError').textContent='Enter credentials'; return false; }
+    if (u===appData.users.main.username && p===appData.users.main.password) { currentUser='main'; completeLogin(u,'Administrator'); }
+    else if (u===appData.users.logger.username && p===appData.users.logger.password) { currentUser='logger'; completeLogin(u,'Logger'); }
+    else document.getElementById('loginError').textContent='Invalid username or password';
+    return false;
+}
+function completeLogin(u,r) {
+    document.getElementById('loginError').textContent='';
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appContainer').classList.add('visible');
+    document.getElementById('userDisplayName').textContent=u;
+    document.getElementById('userDisplayRole').textContent=r;
+    document.getElementById('userAvatar').textContent=u.charAt(0).toUpperCase();
+    initApp();
+}
+function doLogout() {
+    currentUser=null;
+    document.getElementById('appContainer').classList.remove('visible');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('loginUsername').value='';
+    document.getElementById('loginPassword').value='';
+}
+
+function initApp() {
+    registerDevice();
+    const today = new Date().toISOString().split('T')[0];
+    ['inputDate','prodInputDate','dashDate','availDate','perfDate','qualDate'].forEach(id => {
+        const el=document.getElementById(id); if(el) el.value=today;
+    });
+    populateSelects();
+    renderAll();
+    loadSettingsUI();
+    applyRoleRestrictions();
+    refreshDashboard();
+}
+
+function applyRoleRestrictions() {
+    if (currentUser === 'logger') {
+        document.getElementById('userManagementGrid').style.display = 'none';
+        document.getElementById('loggerNoAccess').style.display = 'block';
+        document.getElementById('resetSection').style.display = 'none';
+    } else {
+        document.getElementById('userManagementGrid').style.display = '';
+        document.getElementById('loggerNoAccess').style.display = 'none';
+        document.getElementById('resetSection').style.display = '';
+    }
+}
+
+function showPage(id,btn) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+id).classList.add('active');
+    document.querySelectorAll('.nav-tab,.mob-tab').forEach(t=>t.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    if(id==='dashboard') refreshDashboard();
+    if(id==='availability') refreshAvailability();
+    if(id==='performance') refreshPerformance();
+    if(id==='quality') refreshQuality();
+}
+function showInputTab(id,btn) {
+    document.querySelectorAll('.input-section').forEach(s=>s.style.display='none');
+    document.getElementById('input-'+id).style.display='block';
+    document.querySelectorAll('#page-datainput .sub-tab').forEach(t=>t.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+}
+function showProdTab(id,btn) {
+    document.querySelectorAll('.prod-section').forEach(s=>s.style.display='none');
+    document.getElementById('prod-'+id).style.display='block';
+    document.querySelectorAll('#page-products .sub-tab').forEach(t=>t.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+}
+
+function showToast(m,t) { t=t||'success'; const el=document.getElementById('toast'); el.className='toast '+t; el.innerHTML='<i class="fas fa-'+(t==='success'?'check-circle':t==='error'?'exclamation-circle':'info-circle')+'"></i> '+m; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3000); }
+
+function getMachineStage(machineId) {
+    const m = appData.machines.find(x=>x.id===machineId);
+    return m ? m.stage : 'Unknown';
+}
+function getStageIcon(stage) {
+    return stage==='Extruding'?'industry':stage==='Printing'?'print':stage==='Cutting'?'cut':'cog';
+}
+function getStageClass(stage) {
+    return stage==='Extruding'?'extruding':stage==='Printing'?'printing':stage==='Cutting'?'cutting':'';
+}
+function stageBadgeHTML(stage) {
+    if (!stage || stage === 'Unknown') return '<span style="font-size:10px;color:var(--text-secondary);">-</span>';
+    return '<span class="stage-badge stage-'+stage.toLowerCase()+'"><i class="fas fa-'+getStageIcon(stage)+'"></i> '+stage+'</span>';
+}
+
+function setStageFilter(stage, page, btn) {
+    if(page==='dash') { dashStage=stage; refreshDashboard(); }
+    if(page==='avail') { availStage=stage; refreshAvailability(); }
+    if(page==='perf') { perfStage=stage; refreshPerformance(); }
+    if(page==='qual') { qualStage=stage; refreshQuality(); }
+    btn.parentElement.querySelectorAll('.stage-pill').forEach(p=>p.classList.remove('active','extruding','printing','cutting','all'));
+    btn.classList.add('active');
+    if(stage==='ALL') btn.classList.add('all');
+    else btn.classList.add(stage.toLowerCase());
+    // also re-populate machine select for that page based on stage
+    populateMachineSelectByStage(page, stage);
+}
+
+function populateMachineSelectByStage(page, stage) {
+    const map = {dash:'dashMachine',avail:'availMachine',perf:'perfMachine',qual:'qualMachine'};
+    const el = document.getElementById(map[page]);
+    if (!el) return;
+    el.innerHTML = '<option value="ALL">All Machines</option>';
+    let list = appData.machines;
+    if (stage !== 'ALL') list = list.filter(m=>m.stage===stage);
+    list.forEach(m => el.innerHTML += '<option value="'+m.id+'">'+m.id+' - '+m.name+'</option>');
+}
+
+function populateSelects() {
+    const mIds=['inputMachine','prodInputMachine','dashMachine','availMachine','perfMachine','qualMachine','logFilterMachine'];
+    mIds.forEach(id => {
+        const el=document.getElementById(id); if(!el) return; el.innerHTML='';
+        if(['dashMachine','availMachine','perfMachine','qualMachine','logFilterMachine'].includes(id)) el.innerHTML='<option value="ALL">All Machines</option>';
+        appData.machines.forEach(m => {
+            const stageIcon = m.stage==='Extruding'?'🏭':m.stage==='Printing'?'🖨️':'✂️';
+            el.innerHTML += '<option value="'+m.id+'">'+stageIcon+' '+m.id+' - '+m.name+'</option>';
+        });
+    });
+    const pEl=document.getElementById('prodInputProduct'); if(pEl) { pEl.innerHTML=''; appData.products.forEach(p => pEl.innerHTML+='<option value="'+p.code+'" data-ict="'+p.ict+'">'+p.code+' - '+p.name+'</option>'); }
+    populateReasonSelect();
+    renderStageMachineCheckboxes();
+}
+function populateReasonSelect() {
+    const el=document.getElementById('inputReasonCode'); if(!el) return;
+    el.innerHTML='<option value="Running">✅ Running</option>';
+    appData.reasonCodes.forEach(r => { el.innerHTML+='<option value="'+r.reason+'">'+(r.type==='Loss'?'🔴':'🟡')+' '+r.code+' - '+r.reason+'</option>'; });
+}
+function autoFillICT() {
+    const sel = document.getElementById('prodInputProduct');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.dataset.ict) document.getElementById('prodInputICT').value = opt.dataset.ict;
+}
+function updateMachineStageDisplay() {} // hook for future
+
+// === LOG ===
+function calcDuration(s,e) { const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number); let m=(eh*60+em)-(sh*60+sm); if(m<0)m+=1440; return m; }
+function addLogEntry() {
+    const m=document.getElementById('inputMachine').value, d=document.getElementById('inputDate').value,
+        sh=document.getElementById('inputShift').value, s=document.getElementById('inputStartTime').value,
+        e=document.getElementById('inputEndTime').value, r=document.getElementById('inputReasonCode').value,
+        rm=document.getElementById('inputRemarks').value;
+    if(!m||!d||!s||!e){showToast('Fill required fields','error');return;}
+    appData.logEntries.push({id:Date.now(),machine:m,date:d,shift:sh,start:s,end:e,duration:calcDuration(s,e),reason:r,remarks:rm});
+    saveData(); renderLogTable(); clearLogForm(); showToast('Entry added');
+}
+function clearLogForm() { ['inputStartTime','inputEndTime','inputRemarks'].forEach(id=>document.getElementById(id).value=''); document.getElementById('inputReasonCode').value='Running'; }
+function renderLogTable() {
+    const fm=document.getElementById('logFilterMachine')?.value||'ALL', fd=document.getElementById('logFilterDate')?.value||'', fs=document.getElementById('logFilterStage')?.value||'ALL';
+    let entries=appData.logEntries.slice();
+    if(fm!=='ALL') entries=entries.filter(e=>e.machine===fm);
+    if(fd) entries=entries.filter(e=>e.date===fd);
+    if(fs!=='ALL') entries=entries.filter(e=>getMachineStage(e.machine)===fs);
+    entries.sort((a,b)=>(b.date+b.start).localeCompare(a.date+a.start));
+    const tb=document.querySelector('#logTable tbody'); if(!tb) return; tb.innerHTML='';
+    entries.forEach((e,i) => {
+        const rc=appData.reasonCodes.find(r=>r.reason===e.reason);
+        let cls=e.reason==='Running'?'status-running':rc?(rc.type==='Planned'?'status-planned':rc.lossType==='Changeover loss'?'status-changeover':'status-loss'):'status-loss';
+        const h=Math.floor(e.duration/60),m=e.duration%60;
+        const stage = getMachineStage(e.machine);
+        tb.innerHTML+='<tr><td>'+(i+1)+'</td><td>'+e.machine+'</td><td>'+stageBadgeHTML(stage)+'</td><td>'+e.date+'</td><td>'+e.start+'</td><td>'+e.end+'</td><td>'+(h>0?h+'h ':'')+m+'m</td><td><span class="status-badge '+cls+'">'+e.reason+'</span></td><td><button class="action-btn edit" onclick="editLogEntry('+e.id+')"><i class="fas fa-edit"></i></button> <button class="action-btn delete" onclick="deleteLogEntry('+e.id+')"><i class="fas fa-trash"></i></button></td></tr>';
+    });
+}
+function deleteLogEntry(id) { if(!confirm('Delete?')) return; appData.logEntries=appData.logEntries.filter(e=>e.id!==id); saveData(); renderLogTable(); showToast('Deleted','info'); }
+function editLogEntry(id) {
+    const entry=appData.logEntries.find(e=>e.id===id); if(!entry) return;
+    let mOpts=''; appData.machines.forEach(m=>mOpts+='<option value="'+m.id+'" '+(entry.machine===m.id?'selected':'')+'>'+m.id+' - '+m.name+' ('+m.stage+')</option>');
+    let ropts='<option value="Running" '+(entry.reason==='Running'?'selected':'')+'>Running</option>';
+    appData.reasonCodes.forEach(r=>ropts+='<option value="'+r.reason+'" '+(entry.reason===r.reason?'selected':'')+'>'+r.code+' - '+r.reason+'</option>');
+    document.getElementById('editModalTitle').textContent='Edit Log Entry';
+    document.getElementById('editModalContent').innerHTML=
+        '<div class="form-group"><label>Machine</label><select class="form-control" id="eM">'+mOpts+'</select></div>'+
+        '<div class="form-group"><label>Date</label><input type="date" class="form-control" id="eD" value="'+entry.date+'"></div>'+
+        '<div class="form-group"><label>Shift</label><select class="form-control" id="eSh"><option value="Day" '+(entry.shift==='Day'?'selected':'')+'>Day</option><option value="Night" '+(entry.shift==='Night'?'selected':'')+'>Night</option></select></div>'+
+        '<div class="form-group"><label>Start</label><input type="time" class="form-control" id="eS" value="'+entry.start+'"></div>'+
+        '<div class="form-group"><label>End</label><input type="time" class="form-control" id="eE" value="'+entry.end+'"></div>'+
+        '<div class="form-group"><label>Reason</label><select class="form-control" id="eR">'+ropts+'</select></div>'+
+        '<div class="form-group"><label>Remarks</label><input class="form-control" id="eRm" value="'+(entry.remarks||'')+'"></div>';
+    document.getElementById('editModalSave').onclick=()=>{
+        entry.machine=document.getElementById('eM').value; entry.date=document.getElementById('eD').value;
+        entry.shift=document.getElementById('eSh').value; entry.start=document.getElementById('eS').value;
+        entry.end=document.getElementById('eE').value; entry.reason=document.getElementById('eR').value;
+        entry.remarks=document.getElementById('eRm').value; entry.duration=calcDuration(entry.start,entry.end);
+        saveData(); renderLogTable(); closeModal(); showToast('Updated');
+    };
+    document.getElementById('editModal').classList.add('show');
+}
+function closeModal() { document.getElementById('editModal').classList.remove('show'); }
+
+// === PRODUCTION ===
+function addProductionEntry() {
+    const m=document.getElementById('prodInputMachine').value, d=document.getElementById('prodInputDate').value,
+        sh=document.getElementById('prodInputShift').value, pr=document.getElementById('prodInputProduct').value,
+        sl=parseFloat(document.getElementById('prodInputShiftLen').value)||720,
+        br=parseFloat(document.getElementById('prodInputBreaks').value)||120,
+        ict=parseFloat(document.getElementById('prodInputICT').value)||135,
+        tp=parseInt(document.getElementById('prodInputTotal').value)||0,
+        rj=parseInt(document.getElementById('prodInputRejected').value)||0;
+    if(!m||!d){showToast('Fill required fields','error');return;}
+    appData.productionData.push({id:Date.now(),machine:m,date:d,shift:sh,product:pr,shiftLen:sl,breaks:br,ict:ict,totalPcs:tp,rejected:rj,good:tp-rj});
+    saveData(); renderProdTable(); clearProdForm(); showToast('Saved');
+}
+function clearProdForm() { document.getElementById('prodInputTotal').value='0'; document.getElementById('prodInputRejected').value='0'; }
+function renderProdTable() {
+    const fs=document.getElementById('prodFilterStage')?.value||'ALL';
+    let list = appData.productionData.slice().reverse();
+    if (fs !== 'ALL') list = list.filter(p => getMachineStage(p.machine) === fs);
+    const tb=document.querySelector('#prodTable tbody'); if(!tb) return; tb.innerHTML='';
+    list.forEach((p,i) => {
+        const stage = getMachineStage(p.machine);
+        tb.innerHTML+='<tr><td>'+(i+1)+'</td><td>'+p.machine+'</td><td>'+stageBadgeHTML(stage)+'</td><td>'+p.date+'</td><td>'+p.shift+'</td><td>'+(p.product||'-')+'</td><td>'+p.ict+'</td><td>'+p.totalPcs+'</td><td>'+p.rejected+'</td><td>'+(p.totalPcs-p.rejected)+'</td><td><button class="action-btn edit" onclick="editProdEntry('+p.id+')"><i class="fas fa-edit"></i></button> <button class="action-btn delete" onclick="deleteProdEntry('+p.id+')"><i class="fas fa-trash"></i></button></td></tr>';
+    });
+}
+function deleteProdEntry(id) { if(!confirm('Delete?')) return; appData.productionData=appData.productionData.filter(p=>p.id!==id); saveData(); renderProdTable(); }
+function editProdEntry(id) {
+    const p=appData.productionData.find(x=>x.id===id); if(!p) return;
+    let mOpts=''; appData.machines.forEach(mc=>mOpts+='<option value="'+mc.id+'" '+(p.machine===mc.id?'selected':'')+'>'+mc.id+' - '+mc.name+'</option>');
+    let prOpts=''; appData.products.forEach(pr=>prOpts+='<option value="'+pr.code+'" '+(p.product===pr.code?'selected':'')+'>'+pr.code+' - '+pr.name+'</option>');
+    document.getElementById('editModalTitle').textContent='Edit Production';
+    document.getElementById('editModalContent').innerHTML=
+        '<div class="form-group"><label>Machine</label><select class="form-control" id="epM">'+mOpts+'</select></div>'+
+        '<div class="form-group"><label>Product</label><select class="form-control" id="epP">'+prOpts+'</select></div>'+
+        '<div class="form-group"><label>Date</label><input type="date" class="form-control" id="epD" value="'+p.date+'"></div>'+
+        '<div class="form-group"><label>Total Pieces</label><input type="number" class="form-control" id="epT" value="'+p.totalPcs+'"></div>'+
+        '<div class="form-group"><label>Rejected</label><input type="number" class="form-control" id="epR" value="'+p.rejected+'"></div>'+
+        '<div class="form-group"><label>Rate (pcs/min)</label><input type="number" class="form-control" id="epI" value="'+p.ict+'" step="0.1"></div>'+
+        '<div class="form-group"><label>Shift Length</label><input type="number" class="form-control" id="epSL" value="'+p.shiftLen+'"></div>'+
+        '<div class="form-group"><label>Breaks</label><input type="number" class="form-control" id="epB" value="'+p.breaks+'"></div>';
+    document.getElementById('editModalSave').onclick=()=>{
+        p.machine=document.getElementById('epM').value; p.product=document.getElementById('epP').value;
+        p.date=document.getElementById('epD').value;
+        p.totalPcs=parseInt(document.getElementById('epT').value)||0; p.rejected=parseInt(document.getElementById('epR').value)||0;
+        p.good=p.totalPcs-p.rejected; p.ict=parseFloat(document.getElementById('epI').value)||135;
+        p.shiftLen=parseFloat(document.getElementById('epSL').value)||720; p.breaks=parseFloat(document.getElementById('epB').value)||120;
+        saveData(); renderProdTable(); closeModal(); showToast('Updated');
+    };
+    document.getElementById('editModal').classList.add('show');
+}
+
+// === REASON CODES ===
+function addReasonCode() {
+    const c=parseInt(document.getElementById('rcCode').value), n=document.getElementById('rcName').value.trim();
+    if(!c||!n){showToast('Fill code and reason','error');return;}
+    if(appData.reasonCodes.find(r=>r.code===c)){showToast('Code exists','error');return;}
+    appData.reasonCodes.push({code:c,reason:n,type:document.getElementById('rcType').value,dept:document.getElementById('rcDept').value,lossType:document.getElementById('rcLossType').value,relation:document.getElementById('rcRelation').value});
+    appData.reasonCodes.sort((a,b)=>a.code-b.code); saveData(); renderReasonTable(); populateReasonSelect(); clearReasonForm(); showToast('Added');
+}
+function clearReasonForm() { ['rcCode','rcName','rcRelation'].forEach(id=>document.getElementById(id).value=''); }
+function renderReasonTable() {
+    const tb=document.querySelector('#reasonTable tbody'); if(!tb) return; tb.innerHTML='';
+    appData.reasonCodes.forEach(r => {
+        tb.innerHTML+='<tr><td>'+r.code+'</td><td>'+r.reason+'</td><td><span class="status-badge '+(r.type==='Loss'?'status-loss':'status-planned')+'">'+r.type+'</span></td><td>'+r.dept+'</td><td>'+r.lossType+'</td><td><button class="action-btn edit" onclick="editReasonCode('+r.code+')"><i class="fas fa-edit"></i></button> <button class="action-btn delete" onclick="deleteReasonCode('+r.code+')"><i class="fas fa-trash"></i></button></td></tr>';
+    });
+}
+function deleteReasonCode(c) { if(!confirm('Delete?')) return; appData.reasonCodes=appData.reasonCodes.filter(r=>r.code!==c); saveData(); renderReasonTable(); populateReasonSelect(); }
+function editReasonCode(code) {
+    const r=appData.reasonCodes.find(x=>x.code===code); if(!r) return;
+    document.getElementById('editModalTitle').textContent='Edit Reason Code';
+    document.getElementById('editModalContent').innerHTML=
+        '<div class="form-group"><label>Reason</label><input class="form-control" id="erN" value="'+r.reason+'"></div>'+
+        '<div class="form-group"><label>Type</label><select class="form-control" id="erT"><option value="Loss" '+(r.type==='Loss'?'selected':'')+'>Loss</option><option value="Planned" '+(r.type==='Planned'?'selected':'')+'>Planned</option></select></div>'+
+        '<div class="form-group"><label>Department</label><select class="form-control" id="erD"><option '+(r.dept==='Engineering'?'selected':'')+'>Engineering</option><option '+(r.dept==='Production'?'selected':'')+'>Production</option><option '+(r.dept==='QC'?'selected':'')+'>QC</option></select></div>'+
+        '<div class="form-group"><label>Loss Type</label><select class="form-control" id="erLT"><option '+(r.lossType==='Availability Loss'?'selected':'')+'>Availability Loss</option><option '+(r.lossType==='Planned'?'selected':'')+'>Planned</option><option '+(r.lossType==='Changeover loss'?'selected':'')+'>Changeover loss</option></select></div>'+
+        '<div class="form-group"><label>Relation</label><input class="form-control" id="erR" value="'+r.relation+'"></div>';
+    document.getElementById('editModalSave').onclick=()=>{
+        r.reason=document.getElementById('erN').value; r.type=document.getElementById('erT').value;
+        r.dept=document.getElementById('erD').value; r.lossType=document.getElementById('erLT').value;
+        r.relation=document.getElementById('erR').value;
+        saveData(); renderReasonTable(); populateReasonSelect(); closeModal(); showToast('Updated');
+    };
+    document.getElementById('editModal').classList.add('show');
+}
+
+// === PRODUCTS WITH STAGES ===
+function renderStageMachineCheckboxes(selected) {
+    selected = selected || { Extruding:[], Printing:[], Cutting:[] };
+    STAGES.forEach(stage => {
+        const container = document.getElementById('newProd'+stage+'Machines');
+        if (!container) return;
+        container.innerHTML = '';
+        const stageMachines = appData.machines.filter(m => m.stage === stage);
+        if (stageMachines.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-secondary);font-size:11px;padding:4px;">No '+stage+' machines available</div>';
+            return;
+        }
+        stageMachines.forEach(m => {
+            const checked = selected[stage]?.includes(m.id) ? 'checked' : '';
+            container.innerHTML += '<label class="checkbox-item"><input type="checkbox" value="'+m.id+'" '+checked+'> '+m.id+'</label>';
+        });
+    });
+}
+function getSelectedStageMachines() {
+    const result = {};
+    STAGES.forEach(stage => {
+        const container = document.getElementById('newProd'+stage+'Machines');
+        result[stage] = [];
+        if (container) container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => result[stage].push(cb.value));
+    });
+    return result;
+}
+function addProduct() {
+    const code = document.getElementById('newProductCode').value.trim();
+    const name = document.getElementById('newProductName').value.trim();
+    const ict = parseFloat(document.getElementById('newProductICT').value) || 135;
+    if (!code || !name) { showToast('Fill product code and name','error'); return; }
+    if (appData.products.find(p=>p.code===code)) { showToast('Code exists','error'); return; }
+    const stageMachines = getSelectedStageMachines();
+    appData.products.push({ code, name, ict, stageMachines });
+    saveData(); renderProductsListView(); populateSelects(); clearProductForm(); showToast('Product added');
+}
+function clearProductForm() {
+    document.getElementById('newProductCode').value='';
+    document.getElementById('newProductName').value='';
+    document.getElementById('newProductICT').value='135';
+    renderStageMachineCheckboxes();
+}
+function renderProductsListView() {
+    const el = document.getElementById('productsListView');
+    if (!el) return;
+    el.innerHTML = '';
+    if (appData.products.length === 0) { el.innerHTML='<p style="color:var(--text-secondary);text-align:center;padding:20px;">No products yet</p>'; return; }
+    appData.products.forEach(p => {
+        let stagesHTML = '';
+        STAGES.forEach(stage => {
+            const machines = p.stageMachines?.[stage] || [];
+            if (machines.length > 0) {
+                stagesHTML += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">'+stageBadgeHTML(stage)+'<span style="font-size:11px;color:var(--text-secondary);">';
+                machines.forEach(m => stagesHTML += '<span class="product-code-tag" style="margin:2px;">'+m+'</span>');
+                stagesHTML += '</span></div>';
+            }
+        });
+        if (!stagesHTML) stagesHTML = '<span style="color:var(--text-secondary);font-size:11px;">No machine assignments</span>';
+        el.innerHTML += '<div class="order-card"><div class="order-header"><div><div class="order-title">'+p.code+'</div><div style="font-size:11px;color:var(--text-secondary);">'+p.name+' · '+p.ict+' pcs/min</div></div><div><button class="action-btn edit" onclick="editProduct(\''+p.code+'\')"><i class="fas fa-edit"></i> Edit</button> <button class="action-btn delete" onclick="deleteProduct(\''+p.code+'\')"><i class="fas fa-trash"></i> Delete</button></div></div>'+stagesHTML+'</div>';
+    });
+}
+function deleteProduct(c) { if(!confirm('Delete product?')) return; appData.products=appData.products.filter(p=>p.code!==c); saveData(); renderProductsListView(); populateSelects(); }
+function editProduct(code) {
+    const p = appData.products.find(x=>x.code===code); if (!p) return;
+    let stagesHTML = '';
+    STAGES.forEach(stage => {
+        const stageMachines = appData.machines.filter(m => m.stage === stage);
+        stagesHTML += '<div style="margin-bottom:10px;"><div style="margin-bottom:6px;">'+stageBadgeHTML(stage)+'</div><div class="checkbox-grid">';
+        if (stageMachines.length === 0) stagesHTML += '<div style="color:var(--text-secondary);font-size:11px;">No '+stage+' machines</div>';
+        else stageMachines.forEach(m => {
+            const checked = p.stageMachines?.[stage]?.includes(m.id) ? 'checked' : '';
+            stagesHTML += '<label class="checkbox-item"><input type="checkbox" id="ep_'+stage+'_'+m.id+'" '+checked+'> '+m.id+'</label>';
+        });
+        stagesHTML += '</div></div>';
+    });
+    document.getElementById('editModalTitle').textContent='Edit Product';
+    document.getElementById('editModalContent').innerHTML=
+        '<div class="form-group"><label>Code</label><input class="form-control" id="epC" value="'+p.code+'"></div>'+
+        '<div class="form-group"><label>Name</label><input class="form-control" id="epN" value="'+p.name+'"></div>'+
+        '<div class="form-group"><label>Ideal Rate (pcs/min)</label><input type="number" class="form-control" id="epICT" value="'+p.ict+'"></div>'+
+        '<div><label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;display:block;">Stage Machines:</label>'+stagesHTML+'</div>';
+    document.getElementById('editModalSave').onclick=()=>{
+        p.code=document.getElementById('epC').value; p.name=document.getElementById('epN').value;
+        p.ict=parseFloat(document.getElementById('epICT').value)||135;
+        const sm = { Extruding:[], Printing:[], Cutting:[] };
+        STAGES.forEach(stage => {
+            appData.machines.filter(m=>m.stage===stage).forEach(m=>{
+                const cb = document.getElementById('ep_'+stage+'_'+m.id);
+                if (cb && cb.checked) sm[stage].push(m.id);
+            });
+        });
+        p.stageMachines = sm;
+        saveData(); renderProductsListView(); populateSelects(); closeModal(); showToast('Updated');
+    };
+    document.getElementById('editModal').classList.add('show');
+}
+
+// === MACHINES ===
+function addMachine() {
+    const n=document.getElementById('newMachineNo').value.trim(),nm=document.getElementById('newMachineName').value.trim(),st=document.getElementById('newMachineStage').value;
+    if(!n){showToast('Enter machine no','error');return;}
+    if(appData.machines.find(m=>m.id===n)){showToast('Machine exists','error');return;}
+    appData.machines.push({id:n,name:nm||n,stage:st}); saveData(); renderMachineTable(); populateSelects(); showToast('Added');
+    document.getElementById('newMachineNo').value=''; document.getElementById('newMachineName').value='';
+}
+function renderMachineTable() {
+    const fs=document.getElementById('machineFilterStage')?.value||'ALL';
+    const tb=document.querySelector('#machineTable tbody'); if(!tb) return; tb.innerHTML='';
+    let list = appData.machines;
+    if (fs !== 'ALL') list = list.filter(m=>m.stage===fs);
+    list.forEach(m=>{
+        tb.innerHTML+='<tr><td>'+m.id+'</td><td>'+m.name+'</td><td>'+stageBadgeHTML(m.stage)+'</td><td><button class="action-btn edit" onclick="editMachine(\''+m.id+'\')"><i class="fas fa-edit"></i></button> <button class="action-btn delete" onclick="deleteMachine(\''+m.id+'\')"><i class="fas fa-trash"></i></button></td></tr>';
+    });
+}
+function deleteMachine(id) { if(!confirm('Delete machine?')) return; appData.machines=appData.machines.filter(m=>m.id!==id); saveData(); renderMachineTable(); populateSelects(); }
+function editMachine(id) {
+    const m=appData.machines.find(x=>x.id===id); if(!m) return;
+    document.getElementById('editModalTitle').textContent='Edit Machine';
+    document.getElementById('editModalContent').innerHTML=
+        '<div class="form-group"><label>Machine No.</label><input class="form-control" id="emI" value="'+m.id+'"></div>'+
+        '<div class="form-group"><label>Name</label><input class="form-control" id="emN" value="'+m.name+'"></div>'+
+        '<div class="form-group"><label>Stage</label><select class="form-control" id="emS">'+
+            '<option value="Extruding" '+(m.stage==='Extruding'?'selected':'')+'>🏭 Extruding</option>'+
+            '<option value="Printing" '+(m.stage==='Printing'?'selected':'')+'>🖨️ Printing</option>'+
+            '<option value="Cutting" '+(m.stage==='Cutting'?'selected':'')+'>✂️ Cutting</option>'+
+        '</select></div>';
+    document.getElementById('editModalSave').onclick=()=>{
+        m.id=document.getElementById('emI').value; m.name=document.getElementById('emN').value; m.stage=document.getElementById('emS').value;
+        saveData(); renderMachineTable(); populateSelects(); closeModal(); showToast('Updated');
+    };
+    document.getElementById('editModal').classList.add('show');
+}
+function saveShiftDefaults() {
+    appData.shiftDefaults={dayShiftLen:parseFloat(document.getElementById('defaultDayShiftLen').value)||720,dayBreaks:parseFloat(document.getElementById('defaultDayBreaks').value)||120,nightShiftLen:parseFloat(document.getElementById('defaultNightShiftLen').value)||720,nightBreaks:parseFloat(document.getElementById('defaultNightBreaks').value)||140,defaultICT:parseFloat(document.getElementById('defaultICT').value)||135};
+    saveData(); showToast('Saved');
+}
+
+// === OEE CALC ===
+function calcOEE(machine, date, stage) {
+    let prods = appData.productionData.filter(p=>p.date===date);
+    let logs = appData.logEntries.filter(e=>e.date===date);
+    if (machine !== 'ALL') { prods = prods.filter(p=>p.machine===machine); logs = logs.filter(e=>e.machine===machine); }
+    if (stage && stage !== 'ALL') {
+        prods = prods.filter(p => getMachineStage(p.machine) === stage);
+        logs = logs.filter(e => getMachineStage(e.machine) === stage);
+    }
+
+    let tSL=0,tBR=0,tPcs=0,tRej=0,wICT=135;
+    if(prods.length>0) {
+        let ictNum=0, ictDen=0;
+        prods.forEach(p=>{tSL+=p.shiftLen;tBR+=p.breaks;tPcs+=p.totalPcs;tRej+=p.rejected;ictNum+=p.ict*p.totalPcs;ictDen+=p.totalPcs;});
+        wICT = ictDen>0 ? ictNum/ictDen : prods.reduce((s,p)=>s+p.ict,0)/prods.length;
+    }
+    let lDT=0, dtReasons={};
+    logs.forEach(e=>{
+        if(e.reason==='Running') return;
+        const rc=appData.reasonCodes.find(r=>r.reason===e.reason);
+        if(!rc || !(rc.type==='Planned' && rc.lossType==='Planned')) lDT+=e.duration;
+        dtReasons[e.reason]=(dtReasons[e.reason]||0)+e.duration;
+    });
+    const ppt=tSL-tBR, rt=Math.max(0,ppt-lDT);
+    const avail=ppt>0?rt/ppt:0;
+    const ictPP=wICT>0?1/wICT:0;
+    const perf=rt>0?Math.min(1,(ictPP*tPcs)/rt):0;
+    const good=tPcs-tRej, qual=tPcs>0?good/tPcs:0;
+    return {availability:avail*100,performance:perf*100,quality:qual*100,oee:avail*perf*qual*100,runTime:rt,plannedProdTime:ppt,downtime:lDT,totalPcs:tPcs,goodPcs:good,rejectedPcs:tRej,downtimeReasons:dtReasons,ict:wICT};
+}
+function calcRange(machine,start,end,stage) {
+    const r=[]; let d=new Date(start); const e=new Date(end);
+    while(d<=e) { const ds=d.toISOString().split('T')[0]; const c=calcOEE(machine,ds,stage); if(c.plannedProdTime>0||c.totalPcs>0) r.push({date:ds,...c}); d.setDate(d.getDate()+1); }
+    return r;
+}
+function getDateRange(date,period) {
+    const d=new Date(date);
+    if(period==='day') return {start:date,end:date};
+    if(period==='month') return {start:new Date(d.getFullYear(),d.getMonth(),1).toISOString().split('T')[0],end:new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().split('T')[0]};
+    return {start:new Date(d.getFullYear(),0,1).toISOString().split('T')[0],end:new Date(d.getFullYear(),11,31).toISOString().split('T')[0]};
+}
+
+// === DASHBOARD ===
+function setDashPeriod(p,b){dashPeriod=p;b.parentElement.querySelectorAll('.period-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');refreshDashboard();}
+function setChartPeriod(p,b){chartPeriod=p;b.parentElement.querySelectorAll('.period-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');refreshDashboard();}
+
+function refreshDashboard() {
+    const machine=document.getElementById('dashMachine')?.value||'ALL';
+    const date=document.getElementById('dashDate')?.value||new Date().toISOString().split('T')[0];
+    const stage = dashStage;
+
+    // Overall (all-time avg) - filter by stage
+    const dates=new Set();
+    appData.logEntries.forEach(e=>{
+        if((machine==='ALL'||e.machine===machine) && (stage==='ALL'||getMachineStage(e.machine)===stage)) dates.add(e.date);
+    });
+    appData.productionData.forEach(p=>{
+        if((machine==='ALL'||p.machine===machine) && (stage==='ALL'||getMachineStage(p.machine)===stage)) dates.add(p.date);
+    });
+    let tA=0,tP=0,tQ=0,cnt=0;
+    dates.forEach(dt=>{const r=calcOEE(machine,dt,stage);if(r.plannedProdTime>0){tA+=r.availability;tP+=r.performance;tQ+=r.quality;cnt++;}});
+    const aA=cnt>0?tA/cnt:0,aP=cnt>0?tP/cnt:0,aQ=cnt>0?tQ/cnt:0,oee=(aA/100)*(aP/100)*(aQ/100)*100;
+
+    document.getElementById('kpiOverallOEE').textContent=oee.toFixed(1)+'%';
+    document.getElementById('kpiOverallOEE').className='kpi-value '+(oee>=85?'oee-color-good':oee>=65?'oee-color-medium':'oee-color-bad');
+    document.getElementById('kpiAvailability').textContent=aA.toFixed(1)+'%';
+    document.getElementById('kpiPerformance').textContent=aP.toFixed(1)+'%';
+    document.getElementById('kpiQuality').textContent=aQ.toFixed(1)+'%';
+    document.getElementById('barAvailability').style.width=aA+'%';
+    document.getElementById('barPerformance').style.width=aP+'%';
+    document.getElementById('barQuality').style.width=aQ+'%';
+    ['A','P','Q'].forEach((x,i)=>{const v=[aA,aP,aQ][i];document.getElementById('apqBar'+x).style.width=v+'%';document.getElementById('apqBar'+x).textContent=v.toFixed(1)+'%';});
+
+    // Stage OEE for flow
+    STAGES.forEach(s => {
+        const stageMachines = appData.machines.filter(m=>m.stage===s);
+        const r = calcOEE('ALL', date, s);
+        const el = document.getElementById('stageOEE-'+s);
+        if (el) { el.textContent = r.oee.toFixed(1)+'%'; el.className='oee-value '+(r.oee>=85?'oee-color-good':r.oee>=65?'oee-color-medium':'oee-color-bad'); }
+        const ml = document.getElementById('stageMachines-'+s);
+        if (ml) ml.textContent = stageMachines.length+' machines: '+stageMachines.map(m=>m.id).join(', ');
+    });
+
+    // Period
+    const range=getDateRange(date,dashPeriod);
+    if(dashPeriod==='day') {
+        const r=calcOEE(machine,date,stage);
+        document.getElementById('periodLabel1').textContent="Today's OEE"; document.getElementById('periodValue1').textContent=r.oee.toFixed(1)+'%';
+        document.getElementById('periodLabel2').textContent="Production"; document.getElementById('periodValue2').textContent=r.totalPcs.toLocaleString()+' pcs';
+        document.getElementById('periodLabel3').textContent="Downtime"; document.getElementById('periodValue3').textContent=r.downtime+' min';
+    } else {
+        const rs=calcRange(machine,range.start,range.end,stage); const avg=rs.length>0?rs.reduce((s,r)=>s+r.oee,0)/rs.length:0;
+        document.getElementById('periodLabel1').textContent=(dashPeriod==='month'?'Monthly':'Yearly')+' OEE';
+        document.getElementById('periodValue1').textContent=avg.toFixed(1)+'%';
+        document.getElementById('periodLabel2').textContent='Production'; document.getElementById('periodValue2').textContent=rs.reduce((s,r)=>s+r.totalPcs,0).toLocaleString()+' pcs';
+        document.getElementById('periodLabel3').textContent='Downtime'; document.getElementById('periodValue3').textContent=rs.reduce((s,r)=>s+r.downtime,0)+' min';
+    }
+
+    renderOEEChart(machine,date,stage); renderLossChart(machine,date,stage); renderLossDetails(machine,date,stage);
+    renderActiveOrders(date);
+}
+
+function renderActiveOrders(date) {
+    // Find unique products produced today
+    const todayProd = appData.productionData.filter(p => p.date === date);
+    const productsRun = {};
+    todayProd.forEach(p => {
+        if (!productsRun[p.product]) productsRun[p.product] = { machines: new Set(), totalPcs: 0 };
+        productsRun[p.product].machines.add(p.machine);
+        productsRun[p.product].totalPcs += p.totalPcs;
+    });
+    const el = document.getElementById('activeOrdersList');
+    if (!el) return;
+    el.innerHTML = '';
+    const keys = Object.keys(productsRun);
+    if (keys.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:14px;font-size:12px;">No active production orders for this date</p>'; return; }
+    keys.forEach(pCode => {
+        const prod = appData.products.find(x=>x.code===pCode);
+        const data = productsRun[pCode];
+        const machinesByStage = { Extruding:[], Printing:[], Cutting:[] };
+        Array.from(data.machines).forEach(mId => {
+            const s = getMachineStage(mId);
+            if (machinesByStage[s]) machinesByStage[s].push(mId);
+        });
+        let stagesHTML = '';
+        STAGES.forEach(s => {
+            if (machinesByStage[s].length > 0) {
+                stagesHTML += stageBadgeHTML(s) + ' <span style="font-size:11px;color:var(--text-secondary);margin-right:8px;">'+machinesByStage[s].join(', ')+'</span>';
+            }
+        });
+        el.innerHTML += '<div class="order-card"><div class="order-header"><div><div class="order-title">'+pCode+(prod?' - '+prod.name:'')+'</div><div style="font-size:11px;color:var(--text-secondary);">Total Produced: '+data.totalPcs.toLocaleString()+' pcs</div></div></div><div class="order-stages">'+stagesHTML+'</div></div>';
+    });
+}
+
+// === CHARTS ===
+function dc(n){if(chartInstances[n]){chartInstances[n].destroy();delete chartInstances[n];}}
+const CC={blue:'rgba(68,138,255,1)',blueA:'rgba(68,138,255,0.2)',purple:'rgba(179,136,255,1)',purpleA:'rgba(179,136,255,0.2)',green:'rgba(0,230,118,1)',greenA:'rgba(0,230,118,0.2)',orange:'rgba(255,171,64,1)',red:'rgba(255,82,82,1)',cyan:'rgba(24,255,255,1)'};
+const CO={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a0a0b0',font:{family:'Inter',size:10}}}},scales:{x:{ticks:{color:'#a0a0b0',font:{size:9}},grid:{color:'rgba(42,42,74,0.3)'}},y:{ticks:{color:'#a0a0b0',font:{size:9}},grid:{color:'rgba(42,42,74,0.3)'},beginAtZero:true}}};
+
+function renderOEEChart(machine,date,stage) {
+    const ctx=document.getElementById('chartOEETrend'); if(!ctx) return; dc('oeeTrend');
+    let labels=[],dO=[],dA=[],dP=[],dQ=[]; const d=new Date(date);
+    if(chartPeriod==='daily') { for(let i=29;i>=0;i--){const dd=new Date(d);dd.setDate(dd.getDate()-i);const r=calcOEE(machine,dd.toISOString().split('T')[0],stage);labels.push(dd.getDate()+'/'+(dd.getMonth()+1));dO.push(r.oee.toFixed(1));dA.push(r.availability.toFixed(1));dP.push(r.performance.toFixed(1));dQ.push(r.quality.toFixed(1));} }
+    else if(chartPeriod==='monthly') { for(let m=0;m<12;m++){const s=new Date(d.getFullYear(),m,1),e=new Date(d.getFullYear(),m+1,0);const rs=calcRange(machine,s.toISOString().split('T')[0],e.toISOString().split('T')[0],stage);const avg=rs.length>0?rs.reduce((s,r)=>s+r.oee,0)/rs.length:0;labels.push(['J','F','M','A','M','J','J','A','S','O','N','D'][m]);dO.push(avg.toFixed(1));} }
+    else { for(let y=d.getFullYear()-4;y<=d.getFullYear();y++){const s=new Date(y,0,1),e=new Date(y,11,31);const rs=calcRange(machine,s.toISOString().split('T')[0],e.toISOString().split('T')[0],stage);const avg=rs.length>0?rs.reduce((s,r)=>s+r.oee,0)/rs.length:0;labels.push(y+'');dO.push(avg.toFixed(1));} }
+    const ds=[{label:'OEE',data:dO,borderColor:CC.green,backgroundColor:CC.greenA,fill:true,tension:0.4}];
+    if(chartPeriod==='daily') ds.push({label:'Avail',data:dA,borderColor:CC.blue,backgroundColor:'transparent',tension:0.4,borderDash:[5,5]},{label:'Perf',data:dP,borderColor:CC.purple,backgroundColor:'transparent',tension:0.4,borderDash:[5,5]},{label:'Qual',data:dQ,borderColor:CC.orange,backgroundColor:'transparent',tension:0.4,borderDash:[5,5]});
+    chartInstances['oeeTrend']=new Chart(ctx,{type:'line',data:{labels,datasets:ds},options:{...CO,scales:{...CO.scales,y:{...CO.scales.y,max:100}}}});
+}
+function renderLossChart(machine,date,stage) {
+    const ctx=document.getElementById('chartLossBreakdown'); if(!ctx) return; dc('lossBD');
+    const r=calcOEE(machine,date,stage); const aL=Math.max(0,100-r.availability),pL=(r.availability/100)*Math.max(0,100-r.performance),qL=(r.availability/100)*(r.performance/100)*Math.max(0,100-r.quality);
+    chartInstances['lossBD']=new Chart(ctx,{type:'doughnut',data:{labels:['OEE','Avail Loss','Perf Loss','Qual Loss'],datasets:[{data:[r.oee.toFixed(1),aL.toFixed(1),pL.toFixed(1),qL.toFixed(1)],backgroundColor:[CC.green,CC.blue,CC.purple,CC.orange],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#a0a0b0',padding:12,font:{size:10}}}},cutout:'65%'}});
+}
+function renderLossDetails(machine,date,stage) {
+    const r=calcOEE(machine,date,stage),tot=Object.values(r.downtimeReasons).reduce((s,v)=>s+v,0);
+    const cols=['#ff5252','#448aff','#b388ff','#ffab40','#18ffff','#ffd740','#69f0ae','#ea80fc'];
+    const sorted=Object.entries(r.downtimeReasons).sort((a,b)=>b[1]-a[1]);
+    const sb=document.getElementById('lossStackBar'); sb.innerHTML='';
+    sorted.forEach(([n,m],i)=>{const p=tot>0?m/tot*100:0;if(p>0)sb.innerHTML+='<div class="loss-stack-segment" style="width:'+p+'%;background:'+cols[i%cols.length]+';">'+(p>8?p.toFixed(0)+'%':'')+'</div>';});
+    const dl=document.getElementById('lossDetailList'); dl.innerHTML='';
+    sorted.forEach(([n,m],i)=>{const p=tot>0?m/tot*100:0;const h=Math.floor(m/60),mn=m%60;dl.innerHTML+='<div class="reason-list-item"><div class="reason-dot" style="background:'+cols[i%cols.length]+';"></div><div class="reason-name">'+n+'</div><div class="reason-pct">'+p.toFixed(1)+'%</div><div class="reason-time">'+(h>0?h+'h ':'')+mn+'m</div></div>';});
+    if(!sorted.length) dl.innerHTML='<p style="color:var(--text-secondary);text-align:center;padding:14px;font-size:11px;">No downtime data</p>';
+    const sl=document.getElementById('lossSeverityList'); sl.innerHTML='';
+    sorted.forEach(([n,m])=>{const p=tot>0?m/tot*100:0;let s=p<=10?{l:'Low',c:'severity-good'}:p<=30?{l:'Medium',c:'severity-medium'}:{l:'Extreme',c:'severity-extreme'};sl.innerHTML+='<div class="reason-list-item"><div class="reason-name">'+n+'</div><span class="'+s.c+'">'+s.l+'</span><div class="reason-pct">'+m+' min</div></div>';});
+    if(!sorted.length) sl.innerHTML='<p style="color:var(--text-secondary);text-align:center;padding:14px;font-size:11px;">No data</p>';
+}
+
+// === AVAIL/PERF/QUAL ===
+function setAvailPeriod(p,b){availPeriod=p;b.parentElement.querySelectorAll('.period-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');refreshAvailability();}
+function setPerfPeriod(p,b){perfPeriod=p;b.parentElement.querySelectorAll('.period-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');refreshPerformance();}
+function setQualPeriod(p,b){qualPeriod=p;b.parentElement.querySelectorAll('.period-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');refreshQuality();}
+
+function refreshAvailability() {
+    const m=document.getElementById('availMachine')?.value||'ALL',date=document.getElementById('availDate')?.value||new Date().toISOString().split('T')[0];
+    const stage = availStage;
+    const range=getDateRange(date,availPeriod); const rs=availPeriod==='day'?[calcOEE(m,date,stage)]:calcRange(m,range.start,range.end,stage);
+    if(!rs.length) rs.push(calcOEE(m,date,stage));
+    const avg=rs.reduce((s,r)=>s+r.availability,0)/rs.length;
+    document.getElementById('availPct').textContent=avg.toFixed(1)+'%';
+    document.getElementById('availPPT').textContent=rs.reduce((s,r)=>s+r.plannedProdTime,0)+' min';
+    document.getElementById('availART').textContent=rs.reduce((s,r)=>s+r.runTime,0)+' min';
+    document.getElementById('availDT').textContent=rs.reduce((s,r)=>s+r.downtime,0)+' min';
+    const ctx1=document.getElementById('chartAvailTrend'); if(ctx1){dc('aT');let l=[],d=[];for(let i=29;i>=0;i--){const dd=new Date(date);dd.setDate(dd.getDate()-i);const r=calcOEE(m,dd.toISOString().split('T')[0],stage);l.push(dd.getDate()+'/'+(dd.getMonth()+1));d.push(r.availability.toFixed(1));}chartInstances['aT']=new Chart(ctx1,{type:'line',data:{labels:l,datasets:[{label:'Avail %',data:d,borderColor:CC.blue,backgroundColor:CC.blueA,fill:true,tension:0.4}]},options:{...CO,scales:{...CO.scales,y:{...CO.scales.y,max:100}}}});}
+    const ctx2=document.getElementById('chartDowntimeReasons'); if(ctx2){dc('dR');const r=calcOEE(m,date,stage);const s=Object.entries(r.downtimeReasons).sort((a,b)=>b[1]-a[1]).slice(0,8);chartInstances['dR']=new Chart(ctx2,{type:'bar',data:{labels:s.map(x=>x[0].length>12?x[0].substring(0,12)+'…':x[0]),datasets:[{label:'Min',data:s.map(x=>x[1]),backgroundColor:['#ff5252','#448aff','#b388ff','#ffab40','#18ffff','#ffd740','#69f0ae','#ea80fc']}]},options:{...CO,indexAxis:'y',plugins:{legend:{display:false}}}});}
+    let entries=appData.logEntries.filter(e=>e.reason!=='Running');
+    if(m!=='ALL') entries=entries.filter(e=>e.machine===m);
+    if(stage!=='ALL') entries=entries.filter(e=>getMachineStage(e.machine)===stage);
+    entries=entries.slice().reverse().slice(0,50);
+    const tb=document.querySelector('#availDowntimeTable tbody'); if(tb){tb.innerHTML='';entries.forEach((e,i)=>{const rc=appData.reasonCodes.find(r=>r.reason===e.reason);const cls=rc?(rc.type==='Planned'?'status-planned':rc.lossType==='Changeover loss'?'status-changeover':'status-loss'):'status-loss';const h=Math.floor(e.duration/60),mn=e.duration%60;tb.innerHTML+='<tr><td>'+(i+1)+'</td><td>'+e.machine+'</td><td>'+stageBadgeHTML(getMachineStage(e.machine))+'</td><td>'+e.date+'</td><td>'+e.start+'</td><td>'+e.end+'</td><td>'+(h>0?h+'h ':'')+mn+'m</td><td><span class="status-badge '+cls+'">'+e.reason+'</span></td></tr>';});}
+}
+
+function refreshPerformance() {
+    const m=document.getElementById('perfMachine')?.value||'ALL',date=document.getElementById('perfDate')?.value||new Date().toISOString().split('T')[0];
+    const stage = perfStage;
+    const range=getDateRange(date,perfPeriod); const rs=perfPeriod==='day'?[calcOEE(m,date,stage)]:calcRange(m,range.start,range.end,stage);
+    if(!rs.length) rs.push(calcOEE(m,date,stage));
+    const avg=rs.reduce((s,r)=>s+r.performance,0)/rs.length,avgI=rs.reduce((s,r)=>s+(r.ict||135),0)/rs.length;
+    document.getElementById('perfPct').textContent=avg.toFixed(1)+'%';
+    document.getElementById('perfICT').textContent=(1/avgI*60).toFixed(3)+' s/pc';
+    document.getElementById('perfTC').textContent=rs.reduce((s,r)=>s+r.totalPcs,0).toLocaleString()+' pcs';
+    document.getElementById('perfRT').textContent=rs.reduce((s,r)=>s+r.runTime,0)+' min';
+    const ctx1=document.getElementById('chartPerfTrend'); if(ctx1){dc('pT');let l=[],d=[];for(let i=29;i>=0;i--){const dd=new Date(date);dd.setDate(dd.getDate()-i);const r=calcOEE(m,dd.toISOString().split('T')[0],stage);l.push(dd.getDate()+'/'+(dd.getMonth()+1));d.push(r.performance.toFixed(1));}chartInstances['pT']=new Chart(ctx1,{type:'line',data:{labels:l,datasets:[{label:'Perf %',data:d,borderColor:CC.purple,backgroundColor:CC.purpleA,fill:true,tension:0.4}]},options:{...CO,scales:{...CO.scales,y:{...CO.scales.y,max:100}}}});}
+    const ctx2=document.getElementById('chartProdVsTarget'); if(ctx2){dc('pvt');let l=[],a=[],t=[];for(let i=6;i>=0;i--){const dd=new Date(date);dd.setDate(dd.getDate()-i);const r=calcOEE(m,dd.toISOString().split('T')[0],stage);l.push(dd.getDate()+'/'+(dd.getMonth()+1));a.push(r.totalPcs);t.push(Math.round(r.runTime*(r.ict||135)));}chartInstances['pvt']=new Chart(ctx2,{type:'bar',data:{labels:l,datasets:[{label:'Actual',data:a,backgroundColor:CC.purple},{label:'Target',data:t,backgroundColor:'rgba(179,136,255,0.3)'}]},options:CO});}
+}
+
+function refreshQuality() {
+    const m=document.getElementById('qualMachine')?.value||'ALL',date=document.getElementById('qualDate')?.value||new Date().toISOString().split('T')[0];
+    const stage = qualStage;
+    const range=getDateRange(date,qualPeriod); const rs=qualPeriod==='day'?[calcOEE(m,date,stage)]:calcRange(m,range.start,range.end,stage);
+    if(!rs.length) rs.push(calcOEE(m,date,stage));
+    const avg=rs.reduce((s,r)=>s+r.quality,0)/rs.length;
+    document.getElementById('qualPct').textContent=avg.toFixed(1)+'%';
+    document.getElementById('qualGood').textContent=rs.reduce((s,r)=>s+r.goodPcs,0).toLocaleString();
+    document.getElementById('qualBad').textContent=rs.reduce((s,r)=>s+r.rejectedPcs,0).toLocaleString();
+    document.getElementById('qualTotal').textContent=rs.reduce((s,r)=>s+r.totalPcs,0).toLocaleString();
+    const ctx1=document.getElementById('chartQualTrend'); if(ctx1){dc('qT');let l=[],d=[];for(let i=29;i>=0;i--){const dd=new Date(date);dd.setDate(dd.getDate()-i);const r=calcOEE(m,dd.toISOString().split('T')[0],stage);l.push(dd.getDate()+'/'+(dd.getMonth()+1));d.push(r.quality.toFixed(1));}chartInstances['qT']=new Chart(ctx1,{type:'line',data:{labels:l,datasets:[{label:'Quality %',data:d,borderColor:CC.green,backgroundColor:CC.greenA,fill:true,tension:0.4}]},options:{...CO,scales:{...CO.scales,y:{...CO.scales.y,max:100}}}});}
+    const ctx2=document.getElementById('chartGoodVsBad'); if(ctx2){dc('gvb');const g=rs.reduce((s,r)=>s+r.goodPcs,0),b=rs.reduce((s,r)=>s+r.rejectedPcs,0);chartInstances['gvb']=new Chart(ctx2,{type:'doughnut',data:{labels:['Good','Rejected'],datasets:[{data:[g,b],backgroundColor:[CC.green,CC.red],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#a0a0b0'}}},cutout:'60%'}});}
+}
+
+// === SETTINGS ===
+function loadSettingsUI() {
+    const el=id=>document.getElementById(id);
+    if(el('settMainUser')) el('settMainUser').value=appData.users.main.username;
+    if(el('settLoggerUser')) el('settLoggerUser').value=appData.users.logger.username;
+    if(el('defaultDayShiftLen')) { el('defaultDayShiftLen').value=appData.shiftDefaults.dayShiftLen; el('defaultDayBreaks').value=appData.shiftDefaults.dayBreaks; el('defaultNightShiftLen').value=appData.shiftDefaults.nightShiftLen; el('defaultNightBreaks').value=appData.shiftDefaults.nightBreaks; el('defaultICT').value=appData.shiftDefaults.defaultICT; }
+    if(el('gsheetUrl')) { el('gsheetUrl').value=appData.gsheetConfig?.url||''; el('gsheetName').value=appData.gsheetConfig?.sheetName||'OEE_Data'; updateGSheetStatus(); }
+    renderDeviceList();
+}
+function updateUsername(type) {
+    if(currentUser!=='main'){showToast('Admin only','error');return;}
+    const v=document.getElementById(type==='main'?'settMainUser':'settLoggerUser').value.trim();
+    if(!v){showToast('Required','error');return;}
+    appData.users[type].username=v; saveData(); showToast('Updated');
+}
+function updatePassword(type) {
+    if(currentUser!=='main'){showToast('Admin only','error');return;}
+    const id=type==='main'?'settMainPass':'settLoggerPass';
+    const v=document.getElementById(id).value.trim();
+    if(!v){showToast('Required','error');return;}
+    appData.users[type].password=v; saveData(); document.getElementById(id).value=''; showToast('Updated');
+}
+function registerDevice() {
+    let id=localStorage.getItem('oee_dev_id');
+    if(!id){id='DEV-'+Date.now().toString(36).toUpperCase();localStorage.setItem('oee_dev_id',id);}
+    const ua=navigator.userAgent;
+    const name=/Mobile|Android/.test(ua)?'Mobile':/Tablet|iPad/.test(ua)?'Tablet':'Desktop';
+    const browser=/Chrome/.test(ua)?'Chrome':/Firefox/.test(ua)?'Firefox':/Safari/.test(ua)?'Safari':'Other';
+    const ex=appData.devices.find(d=>d.id===id);
+    if(!ex) appData.devices.push({id,name,browser,lastActive:new Date().toISOString(),blocked:false});
+    else ex.lastActive=new Date().toISOString();
+    appData.currentDevice=id; saveData();
+}
+function renderDeviceList() {
+    const el=document.getElementById('deviceList'); if(!el) return; el.innerHTML='';
+    appData.devices.forEach(d=>{
+        const cur=d.id===appData.currentDevice;
+        el.innerHTML+='<div class="device-item"><div class="device-info"><div class="device-icon"><i class="fas fa-'+(d.name==='Mobile'?'mobile-alt':d.name==='Tablet'?'tablet-alt':'desktop')+'"></i></div><div><div style="font-weight:600;font-size:12px;">'+d.name+(cur?' <span style="color:var(--accent-green);font-size:10px;">(Current)</span>':'')+'</div><div style="font-size:10px;color:var(--text-secondary);">'+d.browser+' · '+d.id+'</div></div></div><div style="display:flex;gap:4px;">'+(d.blocked?'<button class="btn btn-success" onclick="toggleDev(\''+d.id+'\',false)" style="padding:4px 9px;font-size:10px;">Unblock</button>':'<button class="btn btn-danger" onclick="toggleDev(\''+d.id+'\',true)" style="padding:4px 9px;font-size:10px;">Block</button>')+' <button class="btn btn-secondary" onclick="removeDev(\''+d.id+'\')" style="padding:4px 9px;font-size:10px;">Remove</button></div></div>';
+    });
+}
+function toggleDev(id,b){const d=appData.devices.find(x=>x.id===id);if(d){d.blocked=b;saveData();renderDeviceList();showToast(b?'Blocked':'Unblocked');}}
+function removeDev(id){if(!confirm('Remove?')) return;appData.devices=appData.devices.filter(d=>d.id!==id);saveData();renderDeviceList();}
+
+function saveGSheetConfig() {
+    if(!appData.gsheetConfig) appData.gsheetConfig={};
+    appData.gsheetConfig.url=document.getElementById('gsheetUrl').value.trim();
+    appData.gsheetConfig.sheetName=document.getElementById('gsheetName').value.trim()||'OEE_Data';
+    saveData(); updateGSheetStatus(); showToast('Saved');
+}
+function updateGSheetStatus() {
+    const url=appData.gsheetConfig?.url||'';
+    const dot=document.getElementById('gsheetDot'), text=document.getElementById('gsheetStatusText');
+    if(url) { dot.className='gsheet-dot connected'; text.textContent='URL configured'+(appData.gsheetConfig.lastSync?' | Last: '+new Date(appData.gsheetConfig.lastSync).toLocaleString():''); }
+    else { dot.className='gsheet-dot disconnected'; text.textContent='Not connected'; }
+}
+function testGSheetConnection() {
+    const url=appData.gsheetConfig?.url; if(!url){showToast('Enter URL first','error');return;}
+    showToast('Testing...','info');
+    fetch(url+'?action=test',{mode:'no-cors'}).then(()=>{showToast('Connection sent (CORS hides response)');}).catch(e=>{showToast('Failed','error');});
+}
+function syncToGSheet() {
+    const url=appData.gsheetConfig?.url; if(!url){showToast('Configure URL first','error');return;}
+    showToast('Syncing...','info');
+    const payload={logEntries:appData.logEntries,productionData:appData.productionData,machines:appData.machines,products:appData.products,reasonCodes:appData.reasonCodes};
+    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(()=>{appData.gsheetConfig.lastSync=new Date().toISOString();saveData();updateGSheetStatus();showToast('Sync sent');})
+    .catch(()=>{showToast('Sync failed','error');});
+}
+function exportBackup() {
+    const b=new Blob([JSON.stringify(appData,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download='OEE_Backup_'+new Date().toISOString().split('T')[0]+'.json'; a.click(); showToast('Exported');
+}
+function importBackup(e) {
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader(); r.onload=ev=>{try{appData=JSON.parse(ev.target.result);saveData();initApp();showToast('Imported');}catch(er){showToast('Invalid file','error');}};
+    r.readAsText(f);
+}
+function exportToExcel() {
+    let csv='No,Machine,Stage,Date,Shift,Start,End,Duration(min),Reason,Remarks\n';
+    appData.logEntries.forEach((e,i)=>{csv+=(i+1)+',"'+e.machine+'","'+getMachineStage(e.machine)+'","'+e.date+'","'+e.shift+'","'+e.start+'","'+e.end+'",'+e.duration+',"'+e.reason+'","'+(e.remarks||'')+'"\n';});
+    csv+='\nProduction Data\nNo,Machine,Stage,Date,Shift,Product,Rate,ShiftLen,Breaks,Total,Rejected,Good\n';
+    appData.productionData.forEach((p,i)=>{csv+=(i+1)+',"'+p.machine+'","'+getMachineStage(p.machine)+'","'+p.date+'","'+p.shift+'","'+p.product+'",'+p.ict+','+p.shiftLen+','+p.breaks+','+p.totalPcs+','+p.rejected+','+(p.totalPcs-p.rejected)+'\n';});
+    const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download='OEE_'+new Date().toISOString().split('T')[0]+'.csv'; a.click(); showToast('CSV exported');
+}
+function resetAllData() {
+    if(currentUser!=='main'){showToast('Admin only','error');return;}
+    const u=document.getElementById('resetUser').value.trim(),p=document.getElementById('resetPass').value.trim();
+    if(u!==appData.users.main.username||p!==appData.users.main.password){showToast('Invalid','error');return;}
+    if(!confirm('DELETE ALL DATA?')) return; if(!confirm('FINAL WARNING!')) return;
+    localStorage.removeItem('oee_v4'); appData=JSON.parse(JSON.stringify(DEFAULT_DATA)); saveData(); initApp(); showToast('Reset done','info');
+}
+
+function renderAll(){renderLogTable();renderProdTable();renderReasonTable();renderProductsListView();renderMachineTable();}
+
+document.addEventListener('DOMContentLoaded',function(){loadData();});
+</script>
+</body>
+</html>
